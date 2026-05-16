@@ -1,0 +1,145 @@
+# .pre-commit-config.yaml
+# ─────────────────────────────────────────────
+# QUORUM — Pre-commit hooks
+# Install: make pre-commit-install
+# Run manually: make pre-commit-run
+# Runs automatically on every git commit
+# ─────────────────────────────────────────────
+
+default_language_version:
+  python: python3.12
+
+default_stages: [commit]
+
+repos:
+
+  # ── General file hygiene ─────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]        # allow custom YAML tags
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]     # block files > 500KB from being committed
+      - id: detect-private-key  # catches accidentally committed private keys
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # ── Python: ruff (lint + format) ─────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # ── Python: mypy type checking ────────────────
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        args: [--config-file=pyproject.toml]
+        additional_dependencies:
+          - pydantic==2.7.4
+          - sqlalchemy[mypy]==2.0.30
+          - types-passlib
+          - types-python-jose
+        # Only check app/ — tests use too many mocks for strict typing
+        files: ^app/
+
+  # ── Secret scanning ──────────────────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: |
+          (?x)^(
+            .env.example|
+            env.example|
+            .*\.md|
+            tests/.*
+          )$
+
+  # ── Frontend: ESLint ─────────────────────────
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint (frontend)
+        language: node
+        entry: bash -c 'cd web && npm run lint -- --max-warnings 0'
+        files: ^web/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: typescript
+        name: TypeScript check (frontend)
+        language: node
+        entry: bash -c 'cd web && npx tsc --noEmit'
+        files: ^web/.*\.(ts|tsx)$
+        pass_filenames: false
+
+  # ── SQL: format migrations ────────────────────
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.1.0
+    hooks:
+      - id: sqlfluff-fix
+        args: [--dialect=postgres]
+        files: ^(alembic/versions/.*\.py|scripts/.*\.sql)$
+        # Only fix migrations and SQL scripts, not inline SQL in Python
+
+  # ── YAML/JSON formatting ─────────────────────
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [yaml, json]
+        exclude: |
+          (?x)^(
+            package-lock\.json|
+            web/.*
+          )$
+
+  # ── Dockerfile linting ────────────────────────
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
+        args: [
+          --ignore, DL3008,   # apt-get install without version pinning (we pin)
+          --ignore, DL3013,   # pip without pinning (poetry handles this)
+        ]
+
+  # ── Commit message format ─────────────────────
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - feat      # new feature
+          - fix       # bug fix
+          - docs      # documentation
+          - style     # formatting
+          - refactor  # code restructuring
+          - test      # adding tests
+          - chore     # maintenance
+          - perf      # performance
+          - ci        # CI changes
+          - revert    # reverting commits
+
+# ── CI config (skip slow hooks) ──────────────────
+ci:
+  skip:
+    - mypy        # run separately in CI with full type stubs
+    - eslint      # run separately in CI
+    - typescript  # run separately in CI
+  autoupdate_schedule: monthly

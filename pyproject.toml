@@ -1,0 +1,218 @@
+[tool.poetry]
+name = "quorum-api"
+version = "1.0.0"
+description = "Quorum Collective Intelligence Platform — API"
+authors = ["Quorum Team <engineering@quorum.ai>"]
+license = "UNLICENSED"
+readme = "README.md"
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+# ── API framework ─────────────────────────────
+fastapi = "0.111.0"
+uvicorn = { extras = ["standard"], version = "0.30.1" }
+pydantic = { extras = ["email"], version = "2.7.4" }
+pydantic-settings = "2.3.4"
+python-multipart = "0.0.9"
+
+# ── Database ──────────────────────────────────
+sqlalchemy = { extras = ["asyncio"], version = "2.0.30" }
+asyncpg = "0.29.0"
+alembic = "1.13.1"
+redis = { extras = ["hiredis"], version = "5.0.7" }
+
+# ── Task queue ────────────────────────────────
+celery = { extras = ["redis"], version = "5.4.0" }
+apscheduler = "4.0.0a4"
+flower = "2.0.1"
+
+# ── HTTP ──────────────────────────────────────
+httpx = "0.27.0"
+
+# ── AI / ML ───────────────────────────────────
+anthropic = "0.28.0"
+openai = "1.35.0"
+instructor = "1.4.3"
+langgraph = "0.2.0"
+langchain-core = "0.2.23"
+
+# ── Vector & time-series ──────────────────────
+pinecone-client = "4.1.0"
+influxdb-client = { extras = ["async"], version = "1.44.0" }
+
+# ── Speech-to-text ────────────────────────────
+deepgram-sdk = "3.5.0"
+
+# ── Auth & security ───────────────────────────
+python-jose = { extras = ["cryptography"], version = "3.3.0" }
+authlib = "1.3.1"
+passlib = { extras = ["bcrypt"], version = "1.7.4" }
+cryptography = "42.0.8"
+
+# ── Email & comms ─────────────────────────────
+sendgrid = "6.11.0"
+slack-sdk = "3.29.0"
+
+# ── Billing ───────────────────────────────────
+stripe = "10.6.0"
+
+# ── Utilities ─────────────────────────────────
+python-dotenv = "1.0.1"
+orjson = "3.10.6"
+structlog = "24.4.0"
+tenacity = "8.5.0"
+sentry-sdk = { extras = ["fastapi"], version = "2.10.0" }
+
+[tool.poetry.group.dev.dependencies]
+# Testing
+pytest = "8.2.2"
+pytest-asyncio = "0.23.7"
+pytest-mock = "3.14.0"
+pytest-cov = "5.0.0"
+pytest-xdist = "3.5.0"
+pytest-watch = "4.2.0"
+factory-boy = "3.3.0"
+faker = "26.0.0"
+httpx = "0.27.0"        # TestClient
+
+# Code quality
+ruff = "0.5.0"
+mypy = "1.10.0"
+pre-commit = "3.7.1"
+bandit = { extras = ["toml"], version = "1.7.9" }
+pip-audit = "2.7.3"
+
+# Dev tools
+ipython = "8.26.0"
+rich = "13.7.1"
+
+[tool.poetry.group.test.dependencies]
+pytest = "8.2.2"
+pytest-asyncio = "0.23.7"
+pytest-mock = "3.14.0"
+pytest-cov = "5.0.0"
+pytest-xdist = "3.5.0"
+factory-boy = "3.3.0"
+faker = "26.0.0"
+
+# ── Ruff configuration ────────────────────────
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "PT",   # flake8-pytest-style
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific rules
+    "S",    # flake8-bandit (security)
+    "T20",  # flake8-print (no bare print statements)
+    "ANN",  # flake8-annotations (type hints)
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "ANN101", # missing type for self
+    "ANN102", # missing type for cls
+    "ANN401", # Any annotation (sometimes needed)
+    "S101",   # use of assert (needed in tests)
+    "S105",   # hardcoded password (false positives in tests)
+    "S106",
+]
+per-file-ignores = { "tests/**" = ["S", "ANN", "T20"], "scripts/**" = ["T20"] }
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+force-single-line = false
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+# ── Mypy configuration ────────────────────────
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+exclude = ["tests/", "alembic/", "scripts/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "deepgram.*",
+    "pinecone.*",
+    "influxdb_client.*",
+    "celery.*",
+    "flower.*",
+    "sendgrid.*",
+    "stripe.*",
+    "authlib.*",
+]
+ignore_missing_imports = true
+
+# ── Pytest configuration ──────────────────────
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = [
+    "--cov=app",
+    "--cov-report=term-missing",
+    "--cov-report=xml:coverage.xml",
+    "--cov-fail-under=80",
+    "--tb=short",
+    "--strict-markers",
+]
+markers = [
+    "unit: unit tests (no DB, no external services)",
+    "integration: integration tests (requires DB and Redis)",
+    "ai_eval: AI quality evaluation tests (uses real Claude API)",
+    "e2e: end-to-end tests (requires full stack running)",
+    "slow: tests taking > 5 seconds",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:pydantic.*",
+    "ignore::DeprecationWarning:sqlalchemy.*",
+]
+
+# ── Coverage configuration ────────────────────
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "app/main.py",          # covered by integration tests
+    "app/core/logging.py",  # hard to unit test
+    "*/migrations/*",
+]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]
+
+# ── Bandit security scanner ───────────────────
+[tool.bandit]
+exclude_dirs = ["tests", "scripts"]
+skips = [
+    "B101",  # assert_used — needed in tests
+    "B311",  # pseudo-random — we use secrets module for tokens
+]
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"

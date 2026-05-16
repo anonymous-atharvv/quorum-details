@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+jobs:
+  # ── Backend: lint + typecheck + tests ─────
+  backend:
+    name: Backend (lint + test)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: quorum_test
+          POSTGRES_PASSWORD: quorum_test
+          POSTGRES_DB: quorum_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s --health-timeout 5s --health-retries 10
+        ports: ["5432:5432"]
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+        ports: ["6379:6379"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache Poetry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ hashFiles('poetry.lock') }}
+      - run: pip install poetry==1.8.3
+      - run: poetry install --no-root
+
+      - name: Lint (ruff)
+        run: poetry run ruff check . && poetry run ruff format --check .
+
+      - name: Type check (mypy)
+        run: poetry run mypy app/
+
+      - name: Migrate DB
+        env:
+          DATABASE_URL: postgresql+asyncpg://quorum_test:quorum_test@localhost:5432/quorum_test
+        run: poetry run alembic upgrade head
+
+      - name: Tests (pytest)
+        env:
+          DATABASE_URL: postgresql+asyncpg://quorum_test:quorum_test@localhost:5432/quorum_test
+          REDIS_URL: redis://localhost:6379/0
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_TEST }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY_TEST }}
+          SECRET_KEY: test-secret-key-32-characters-min
+          SPEAKER_HASH_SECRET: test-speaker-hash-secret-32chars
+          RESPONDENT_HASH_SECRET: test-respondent-hash-secret-32ch
+          APP_ENV: test
+          CELERY_TASK_ALWAYS_EAGER: "true"
+          PINECONE_API_KEY: ""
+          DEEPGRAM_API_KEY: ""
+          INFLUXDB_URL: ""
+        run: |
+          poetry run pytest \
+            --cov=app --cov-report=xml \
+            --cov-fail-under=80 \
+            -n auto -v
+
+      - uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ── Frontend: lint + typecheck + build ────
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          AUTH0_SECRET: test-secret-32-characters-minimum
+          AUTH0_BASE_URL: http://localhost:3000
+          AUTH0_ISSUER_BASE_URL: https://test.auth0.com
+          AUTH0_CLIENT_ID: test
+          AUTH0_CLIENT_SECRET: test
+        run: npm run build
+
+  # ── Security scan ─────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install poetry==1.8.3 pip-audit bandit
+      - run: poetry install --no-root
+      - name: Bandit (SAST)
+        run: poetry run bandit -r app/ -ll -f json -o bandit-report.json
+        continue-on-error: true
+      - name: Dependency audit
+        run: pip-audit --requirement <(poetry export -f requirements.txt --without-hashes)
+      - name: Secret scan (trufflehog)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  # ── Docker build check ────────────────────
+  docker:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: production
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: quorum-api:${{ github.sha }}
+
+  # ── Gate: all must pass ───────────────────
+  ci-gate:
+    name: ✅ CI Gate
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, security, docker]
+    if: always()
+    steps:
+      - run: |
+          if [[ "${{ needs.backend.result }}" != "success" ]] ||
+             [[ "${{ needs.frontend.result }}" != "success" ]] ||
+             [[ "${{ needs.security.result }}" != "success" ]] ||
+             [[ "${{ needs.docker.result }}" != "success" ]]; then
+            echo "CI FAILED — check job results above"
+            exit 1
+          fi
+          echo "All CI checks passed ✅"

@@ -1,0 +1,211 @@
+# ─────────────────────────────────────────────
+# QUORUM — Makefile
+# Common development commands
+#
+# Usage: make <target>
+# Run `make` or `make help` to see all targets
+# ─────────────────────────────────────────────
+
+.PHONY: help dev up down logs shell test test-unit test-integration test-ai-evals \
+        lint format typecheck quality migrate migrate-new db-shell redis-cli \
+        build push seed clean reset worker flower
+
+# Default target
+.DEFAULT_GOAL := help
+
+# ── Config ─────────────────────────────────────
+DOCKER_COMPOSE = docker compose
+API_CONTAINER = quorum_api
+WORKER_CONTAINER = quorum_worker
+DB_CONTAINER = quorum_postgres
+
+# ── Help ───────────────────────────────────────
+help: ## Show this help message
+	@echo "QUORUM — Development Commands\n"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+# ── Environment setup ──────────────────────────
+install: ## Install Python dependencies
+	poetry install
+	cd web && npm ci
+
+setup: ## First-time setup: copy .env, install deps, start services, run migrations
+	@[ -f .env ] || cp env.example .env && echo "✅ Created .env from env.example — fill in your API keys"
+	poetry install
+	cd web && npm ci
+	$(DOCKER_COMPOSE) up -d postgres redis influxdb
+	@echo "Waiting for DB to be ready..."
+	@sleep 5
+	poetry run alembic upgrade head
+	@echo "✅ Setup complete. Run 'make dev' to start all services."
+
+# ── Development ────────────────────────────────
+dev: ## Start all services (API, worker, web, databases)
+	$(DOCKER_COMPOSE) up
+
+up: ## Start all services in background
+	$(DOCKER_COMPOSE) up -d
+
+down: ## Stop all services
+	$(DOCKER_COMPOSE) down
+
+restart: ## Restart API service only (faster than full restart)
+	$(DOCKER_COMPOSE) restart api
+
+logs: ## Tail logs from all services
+	$(DOCKER_COMPOSE) logs -f
+
+logs-api: ## Tail API logs only
+	$(DOCKER_COMPOSE) logs -f api
+
+logs-worker: ## Tail worker logs only
+	$(DOCKER_COMPOSE) logs -f worker
+
+shell: ## Open a shell inside the API container
+	$(DOCKER_COMPOSE) exec $(API_CONTAINER) bash
+
+python: ## Open a Python REPL inside the API container with app context loaded
+	$(DOCKER_COMPOSE) exec $(API_CONTAINER) python -c "from app.core.config import settings; import IPython; IPython.embed()"
+
+worker: ## Start Celery worker (local, not in Docker)
+	poetry run celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+
+flower: ## Start Flower (Celery monitor) at http://localhost:5555
+	poetry run celery -A app.workers.celery_app flower --port=5555
+
+# ── Testing ────────────────────────────────────
+test: ## Run full test suite
+	poetry run pytest -v
+
+test-unit: ## Run unit tests only (fast, no DB needed)
+	poetry run pytest tests/unit/ -v --no-header
+
+test-integration: ## Run integration tests (requires DB)
+	poetry run pytest tests/integration/ -v
+
+test-ai-evals: ## Run AI quality evaluation suite (uses real Claude API — costs ~$0.10)
+	@echo "⚠️  This uses real Anthropic API calls. Cost: ~\$0.10"
+	@read -p "Continue? [y/N] " confirm && [ "$$confirm" = "y" ]
+	poetry run pytest tests/ai_evals/ -v --no-header -s
+
+test-cov: ## Run tests with coverage report
+	poetry run pytest --cov=app --cov-report=html --cov-report=term-missing
+	@echo "Coverage report: htmlcov/index.html"
+
+test-watch: ## Run tests in watch mode (reruns on file change)
+	poetry run ptw -- -v tests/unit/
+
+test-e2e: ## Run Playwright E2E tests (requires running dev server)
+	cd web && npx playwright test
+
+# ── Code quality ───────────────────────────────
+lint: ## Run ruff linter
+	poetry run ruff check .
+
+format: ## Auto-format code with ruff
+	poetry run ruff format .
+	poetry run ruff check --fix .
+
+typecheck: ## Run mypy type checker
+	poetry run mypy app/
+
+quality: lint typecheck ## Run all quality checks (lint + typecheck)
+
+pre-commit-install: ## Install pre-commit hooks
+	poetry run pre-commit install
+
+pre-commit-run: ## Run pre-commit on all files
+	poetry run pre-commit run --all-files
+
+# ── Database ───────────────────────────────────
+migrate: ## Run pending database migrations
+	poetry run alembic upgrade head
+
+migrate-new: ## Create a new migration (usage: make migrate-new MSG="add outcome fields")
+	@[ -n "$(MSG)" ] || (echo "Usage: make migrate-new MSG='description'" && exit 1)
+	poetry run alembic revision --autogenerate -m "$(MSG)"
+
+migrate-down: ## Rollback last migration
+	poetry run alembic downgrade -1
+
+migrate-history: ## Show migration history
+	poetry run alembic history --verbose
+
+migrate-current: ## Show current migration version
+	poetry run alembic current
+
+db-shell: ## Open psql shell to local DB
+	$(DOCKER_COMPOSE) exec $(DB_CONTAINER) psql -U quorum -d quorum
+
+db-seed: ## Seed local DB with demo data
+	poetry run python scripts/seed_db.py
+
+db-reset: ## Drop and recreate local DB (⚠️ destroys all local data)
+	@read -p "⚠️  This will destroy all local data. Continue? [y/N] " confirm && [ "$$confirm" = "y" ]
+	$(DOCKER_COMPOSE) exec $(DB_CONTAINER) psql -U quorum -c "DROP DATABASE IF EXISTS quorum;"
+	$(DOCKER_COMPOSE) exec $(DB_CONTAINER) psql -U quorum -c "CREATE DATABASE quorum;"
+	poetry run alembic upgrade head
+	poetry run python scripts/seed_db.py
+	@echo "✅ DB reset and seeded"
+
+redis-cli: ## Open redis-cli to local Redis
+	$(DOCKER_COMPOSE) exec redis redis-cli
+
+# ── Build & Deploy ─────────────────────────────
+build: ## Build production Docker image
+	docker build --target production -t quorum-api:local .
+
+build-dev: ## Build development Docker image
+	docker build --target development -t quorum-api-dev:local .
+
+# ── Security ───────────────────────────────────
+security-scan: ## Run security scans (bandit + pip-audit + trufflehog)
+	@echo "Running Bandit (SAST)..."
+	poetry run bandit -r app/ -ll
+	@echo "\nRunning pip-audit (dependency CVEs)..."
+	pip-audit --requirement <(poetry export -f requirements.txt --without-hashes)
+	@echo "\nSecurity scans complete"
+
+secrets-check: ## Check for accidentally committed secrets
+	trufflehog git file://. --only-verified
+
+# ── Cleanup ────────────────────────────────────
+clean: ## Remove build artifacts and cache
+	find . -type d -name __pycache__ -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	find . -type d -name ".mypy_cache" -exec rm -rf {} +
+	find . -type d -name ".ruff_cache" -exec rm -rf {} +
+	rm -rf htmlcov/ coverage.xml .coverage
+	@echo "✅ Cleaned"
+
+reset: down clean ## Stop services, clean artifacts
+	$(DOCKER_COMPOSE) down -v
+	@echo "✅ Full reset complete"
+
+# ── Utilities ──────────────────────────────────
+generate-secret: ## Generate a random 32-byte secret (for .env)
+	@python -c "import secrets; print(secrets.token_hex(32))"
+
+check-env: ## Verify all required env vars are set
+	@python -c "
+from app.core.config import settings
+print('✅ All required environment variables are set')
+print(f'   APP_ENV: {settings.APP_ENV}')
+print(f'   AUTH0_DOMAIN: {settings.AUTH0_DOMAIN}')
+print(f'   ANTHROPIC_API_KEY: {\"set\" if settings.ANTHROPIC_API_KEY else \"MISSING\"}')
+"
+
+# ── Frontend shortcuts ─────────────────────────
+web-dev: ## Start Next.js dev server
+	cd web && npm run dev
+
+web-build: ## Build Next.js for production
+	cd web && npm run build
+
+web-lint: ## Lint frontend code
+	cd web && npm run lint
+
+web-typecheck: ## TypeScript check frontend
+	cd web && npx tsc --noEmit
