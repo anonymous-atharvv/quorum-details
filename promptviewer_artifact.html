@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUORUM — Master System Prompt v2.0</title>
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --surface: #111114;
+    --surface2: #18181c;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8e6e0;
+    --muted: #7a7870;
+    --accent: #7c6af7;
+    --accent2: #a897ff;
+    --green: #3dba8a;
+    --green2: #5dd4a4;
+    --amber: #e8aa3a;
+    --red: #e05a5a;
+    --blue: #4fa3e8;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --radius: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP HEADER ── */
+  .top-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--green) 100%);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+
+  .logo-text { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0.5px; }
+  .logo-sub { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+  .top-actions { display: flex; gap: 8px; align-items: center; }
+
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .badge-version { background: rgba(124,106,247,0.15); color: var(--accent2); border: 1px solid rgba(124,106,247,0.25); }
+  .badge-prod { background: rgba(61,186,138,0.12); color: var(--green2); border: 1px solid rgba(61,186,138,0.2); }
+
+  .btn-copy-all {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.15s;
+    font-family: var(--font-sans);
+  }
+  .btn-copy-all:hover { opacity: 0.85; }
+  .btn-copy-all:active { transform: scale(0.97); }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; flex: 1; height: calc(100vh - 57px); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px 0;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .sidebar-group { margin-bottom: 4px; }
+
+  .sidebar-group-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 16px 4px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    cursor: pointer;
+    border-radius: 0;
+    font-size: 12px;
+    color: var(--muted);
+    transition: color 0.1s, background 0.1s;
+    border-left: 2px solid transparent;
+    user-select: none;
+  }
+  .sidebar-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .sidebar-item.active { color: var(--accent2); background: rgba(124,106,247,0.08); border-left-color: var(--accent); }
+
+  .sidebar-item .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor; flex-shrink: 0;
+  }
+
+  .section-num { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-left: auto; }
+
+  /* ── MAIN CONTENT ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 40px;
+    max-width: 900px;
+  }
+
+  .main::-webkit-scrollbar { width: 6px; }
+  .main::-webkit-scrollbar-track { background: transparent; }
+  .main::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ── SECTION STYLES ── */
+  .section { margin-bottom: 48px; scroll-margin-top: 24px; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-num-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent2);
+    background: rgba(124,106,247,0.12);
+    border: 1px solid rgba(124,106,247,0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .section-title { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+
+  .section-meta { margin-left: auto; display: flex; gap: 6px; }
+
+  /* ── CONTENT BLOCKS ── */
+  .desc {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #c8c6c0;
+    margin-bottom: 16px;
+  }
+
+  .callout {
+    border-left: 3px solid;
+    padding: 12px 16px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: 12px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .callout-critical { border-color: var(--red); background: rgba(224,90,90,0.06); color: #f0a0a0; }
+  .callout-warning { border-color: var(--amber); background: rgba(232,170,58,0.06); color: #f0c870; }
+  .callout-info { border-color: var(--blue); background: rgba(79,163,232,0.06); color: #90c8f0; }
+  .callout-success { border-color: var(--green); background: rgba(61,186,138,0.06); color: #80d8b8; }
+
+  .callout strong { font-weight: 700; display: block; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; }
+
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 12px 0;
+    overflow: hidden;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .code-lang {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .btn-copy {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .btn-copy:hover { color: var(--text); border-color: var(--border2); background: rgba(255,255,255,0.05); }
+  .btn-copy.copied { color: var(--green2); border-color: var(--green); }
+
+  pre {
+    padding: 16px 14px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #c8c6c0;
+  }
+
+  pre::-webkit-scrollbar { height: 4px; }
+  pre::-webkit-scrollbar-track { background: transparent; }
+  pre::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* Syntax coloring */
+  .kw { color: #c792ea; }    /* keywords */
+  .str { color: #c3e88d; }   /* strings */
+  .cm { color: #546e7a; font-style: italic; } /* comments */
+  .fn { color: #82aaff; }    /* function names */
+  .cls { color: #ffcb6b; }   /* class names */
+  .num { color: #f78c6c; }   /* numbers */
+  .op { color: #89ddff; }    /* operators */
+  .bool { color: #ff5572; }  /* booleans */
+  .attr { color: #80cbc4; }  /* attributes */
+  .punct { color: #89ddff; } /* punctuation */
+  .url { color: var(--blue); text-decoration: underline; }
+
+  /* ── FEATURE GRID ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .feature-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: border-color 0.15s;
+  }
+  .feature-card:hover { border-color: var(--border2); }
+
+  .feature-icon { font-size: 18px; margin-bottom: 8px; }
+  .feature-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .feature-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ── AGENT CARDS ── */
+  .agent-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin: 12px 0;
+  }
+
+  .agent-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .agent-num {
+    width: 24px; height: 24px;
+    background: rgba(124,106,247,0.15);
+    border: 1px solid rgba(124,106,247,0.3);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--accent2);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+  }
+
+  .agent-name { font-size: 14px; font-weight: 700; color: var(--text); }
+  .agent-trigger { font-size: 11px; color: var(--muted); margin-left: auto; font-family: var(--font-mono); }
+
+  .agent-specs {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 10px;
+  }
+
+  .agent-spec { font-size: 11px; color: var(--muted); }
+  .agent-spec span { color: var(--green2); font-weight: 600; }
+
+  /* ── TABLE ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 12.5px;
+  }
+
+  .data-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border2);
+  }
+
+  .data-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    color: #c0beba;
+    vertical-align: top;
+  }
+
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .data-table td code {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent2);
+  }
+
+  /* ── STEP LIST ── */
+  .step-list { margin: 12px 0; }
+
+  .step-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .step-item:last-child { border-bottom: none; }
+
+  .step-n {
+    width: 22px; height: 22px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    color: var(--accent2);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .step-content { flex: 1; }
+  .step-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .step-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ── CONSTRAINT LIST ── */
+  .constraint-list { margin: 12px 0; }
+
+  .constraint-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .constraint-item:last-child { border-bottom: none; }
+
+  .constraint-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--red);
+    background: rgba(224,90,90,0.1);
+    border: 1px solid rgba(224,90,90,0.2);
+    padding: 1px 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .constraint-text { color: #c0beba; line-height: 1.5; }
+  .constraint-text code {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent2);
+  }
+
+  /* ── INLINE CODE ── */
+  code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: rgba(255,255,255,0.07);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--accent2);
+  }
+
+  /* ── BREADCRUMB SEARCH ── */
+  .search-bar {
+    padding: 8px 12px;
+    margin: 0 12px 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .search-bar input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    width: 100%;
+  }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-icon { color: var(--muted); font-size: 13px; }
+
+  /* ── PROGRESS BAR ── */
+  .reading-progress {
+    position: fixed;
+    top: 57px;
+    left: 240px;
+    right: 0;
+    height: 2px;
+    background: var(--border);
+    z-index: 50;
+  }
+  .reading-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    width: 0%;
+    transition: width 0.1s;
+  }
+
+  /* ── SCROLLBAR ── */
+  html::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="logo">
+    <div class="logo-mark">Q</div>
+    <div>
+      <div class="logo-text">QUORUM</div>
+      <div class="logo-sub">Master System Prompt</div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <span class="badge badge-version">v2.0</span>
+    <span class="badge badge-prod">Production Ready</span>
+    <button class="btn-copy-all" onclick="copyAll()">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      Copy Full Prompt
+    </button>
+  </div>
+</div>
+
+<!-- READING PROGRESS -->
+<div class="reading-progress"><div class="reading-progress-fill" id="progress"></div></div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="search-bar">
+      <span class="search-icon">⌕</span>
+      <input type="text" placeholder="Search sections..." id="search" oninput="filterSections()">
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Foundation</div>
+      <div class="sidebar-item active" onclick="goto('s1')" data-label="identity mission"><div class="dot"></div>Identity & Mission<span class="section-num">§1</span></div>
+      <div class="sidebar-item" onclick="goto('s2')" data-label="three phase product"><div class="dot"></div>Three-Phase Product<span class="section-num">§2</span></div>
+      <div class="sidebar-item" onclick="goto('s3')" data-label="system architecture"><div class="dot"></div>System Architecture<span class="section-num">§3</span></div>
+      <div class="sidebar-item" onclick="goto('s4')" data-label="tech stack versions"><div class="dot"></div>Tech Stack<span class="section-num">§4</span></div>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Data Layer</div>
+      <div class="sidebar-item" onclick="goto('s5')" data-label="data models schema"><div class="dot"></div>Data Models<span class="section-num">§5</span></div>
+      <div class="sidebar-item" onclick="goto('s6')" data-label="anonymization cryptographic"><div class="dot"></div>Anonymization<span class="section-num">§6</span></div>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Intelligence</div>
+      <div class="sidebar-item" onclick="goto('s7')" data-label="ai engine agents survey designer tension analyst live"><div class="dot"></div>AI Engine (5 Agents)<span class="section-num">§7</span></div>
+      <div class="sidebar-item" onclick="goto('s11')" data-label="prompt versioning ab test"><div class="dot"></div>Prompt Versioning<span class="section-num">§11</span></div>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">API & Runtime</div>
+      <div class="sidebar-item" onclick="goto('s8')" data-label="api specification endpoints websocket"><div class="dot"></div>API Specification<span class="section-num">§8</span></div>
+      <div class="sidebar-item" onclick="goto('s9')" data-label="real time pipeline deepgram"><div class="dot"></div>Real-Time Pipeline<span class="section-num">§9</span></div>
+      <div class="sidebar-item" onclick="goto('s10')" data-label="llm cost economics"><div class="dot"></div>LLM Cost Model<span class="section-num">§10</span></div>
+      <div class="sidebar-item" onclick="goto('s13')" data-label="redis key schema cache"><div class="dot"></div>Redis Key Schema<span class="section-num">§13</span></div>
+      <div class="sidebar-item" onclick="goto('s14')" data-label="celery task schedule worker"><div class="dot"></div>Celery Schedule<span class="section-num">§14</span></div>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Security & Deploy</div>
+      <div class="sidebar-item" onclick="goto('s12')" data-label="security auth env vars secrets"><div class="dot"></div>Security & Env Vars<span class="section-num">§12</span></div>
+      <div class="sidebar-item" onclick="goto('s15')" data-label="file structure directory"><div class="dot"></div>File Structure<span class="section-num">§15</span></div>
+      <div class="sidebar-item" onclick="goto('s16')" data-label="build order sequence phases"><div class="dot"></div>Build Order<span class="section-num">§16</span></div>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Production</div>
+      <div class="sidebar-item" onclick="goto('s17')" data-label="constraints non negotiable rules"><div class="dot"></div>Non-Negotiables<span class="section-num">§17</span></div>
+      <div class="sidebar-item" onclick="goto('s18')" data-label="pricing business model"><div class="dot"></div>Pricing & Business<span class="section-num">§18</span></div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="main" onscroll="updateProgress()">
+
+    <!-- § HOW TO USE -->
+    <div class="section" id="s0">
+      <div class="callout callout-info">
+        <strong>📋 How to Use This Prompt</strong>
+        Feed this entire document as the system context to any frontier AI coding agent (Claude Code, Cursor, GPT-4o). Every architectural decision, AI behavior, data model, API contract, and build constraint is defined here. Build in the exact sequence in §16. Do not deviate. Do not simplify.
+      </div>
+    </div>
+
+    <!-- §1 IDENTITY -->
+    <div class="section" id="s1">
+      <div class="section-header">
+        <span class="section-num-badge">§01</span>
+        <h2 class="section-title">Identity & Mission</h2>
+        <div class="section-meta">
+          <span class="badge badge-prod">Foundation</span>
+        </div>
+      </div>
+
+      <p class="desc"><strong style="color:var(--text)">QUORUM</strong> — Collective Intelligence Platform. A B2B AI platform that makes organizational group decisions measurably better by combining pre-meeting anonymous elicitation, real-time meeting intelligence, and longitudinal outcome tracking with compounding intelligence.</p>
+
+      <div class="callout callout-critical">
+        <strong>🔴 Core Insight</strong>
+        Every existing meeting tool (Otter.ai, Fireflies, Slido) solves <em>efficiency</em>. Quorum solves <em>decision quality</em> — a fundamentally different and more valuable problem. Organizations lose $37B annually in the US to decisions made poorly in meetings.
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🎯</div>
+          <div class="feature-title">HiPPO Effect</div>
+          <div class="feature-desc">Highest-paid person's opinion dominates and suppresses all other voices</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🐑</div>
+          <div class="feature-title">Groupthink</div>
+          <div class="feature-desc">Social pressure kills honest dissent before it's voiced in the room</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔇</div>
+          <div class="feature-title">Info Pooling Failure</div>
+          <div class="feature-desc">People have the answer but never say it due to hierarchy or fear</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚓</div>
+          <div class="feature-title">Anchoring Bias</div>
+          <div class="feature-desc">First speaker frames the entire conversation direction permanently</div>
+        </div>
+      </div>
+
+      <div class="callout callout-warning">
+        <strong>⚠️ What Quorum Is NOT</strong>
+        Not a transcription tool. Not a task manager. Not a performance evaluation tool — <strong>NEVER used to assess individuals</strong>. Not surveillance — all individual input is architecturally anonymized at the point of collection.
+      </div>
+    </div>
+
+    <!-- §2 THREE PHASES -->
+    <div class="section" id="s2">
+      <div class="section-header">
+        <span class="section-num-badge">§02</span>
+        <h2 class="section-title">Three-Phase Product Behavior</h2>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-header">
+          <div class="agent-num">1</div>
+          <div class="agent-name">Before the Meeting</div>
+          <div class="agent-trigger">24–48 hrs prior</div>
+        </div>
+        <div class="step-list">
+          <div class="step-item"><div class="step-n">1</div><div class="step-content"><div class="step-title">Facilitator creates meeting</div><div class="step-desc">Connects to calendar, agenda imported, participants auto-added</div></div></div>
+          <div class="step-item"><div class="step-n">2</div><div class="step-content"><div class="step-title">AI generates 4–6 survey questions</div><div class="step-desc">Targeted to agenda with specific hypotheses, confidence ratings, falsifiability questions</div></div></div>
+          <div class="step-item"><div class="step-n">3</div><div class="step-content"><div class="step-title">Survey links sent — no account required</div><div class="step-desc">Participants respond via email link. HMAC anonymization at point of submission</div></div></div>
+          <div class="step-item"><div class="step-n">4</div><div class="step-content"><div class="step-title">Tension Map generated (≥30% response rate)</div><div class="step-desc">AI synthesizes responses into consensus areas, tension areas, missing perspectives</div></div></div>
+          <div class="step-item"><div class="step-n">5</div><div class="step-content"><div class="step-title">Facilitator receives private brief</div><div class="step-desc">Tension map + recommended questions + meeting strategy. Never visible to participants.</div></div></div>
+        </div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-header">
+          <div class="agent-num">2</div>
+          <div class="agent-name">During the Meeting</div>
+          <div class="agent-trigger">Real-time</div>
+        </div>
+        <div class="step-list">
+          <div class="step-item"><div class="step-n">1</div><div class="step-content"><div class="step-title">Bot joins Zoom/Teams/Meet</div><div class="step-desc">Deepgram Nova-2 streams real-time transcription with speaker diarization</div></div></div>
+          <div class="step-item"><div class="step-n">2</div><div class="step-content"><div class="step-title">Speakers immediately anonymized</div><div class="step-desc">Meeting-scoped HMAC hash. Never stored as user_id. Resets each meeting.</div></div></div>
+          <div class="step-item"><div class="step-n">3</div><div class="step-content"><div class="step-title">3-tier detection every 30 seconds</div><div class="step-desc">HiPPO (rule, ~1ms) → Groupthink precheck (rule, ~1ms) → Missing Perspective (semantic) → LLM (<3s)</div></div></div>
+          <div class="step-item"><div class="step-n">4</div><div class="step-content"><div class="step-title">Alerts go to facilitator sidebar only</div><div class="step-desc">Never broadcast. Max 2 HiPPO + 3 missing-perspective alerts per meeting.</div></div></div>
+        </div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-header">
+          <div class="agent-num">3</div>
+          <div class="agent-name">After the Meeting</div>
+          <div class="agent-trigger">30 / 90 / 180 days</div>
+        </div>
+        <div class="step-list">
+          <div class="step-item"><div class="step-n">1</div><div class="step-content"><div class="step-title">Post-mortem auto-generated (24hr)</div><div class="step-desc">Assumptions documented explicitly, dissenting views (anonymous), success criteria measurable</div></div></div>
+          <div class="step-item"><div class="step-n">2</div><div class="step-content"><div class="step-title">Decisions captured with full context</div><div class="step-desc">Options considered, key assumptions, confidence score, dissenting views</div></div></div>
+          <div class="step-item"><div class="step-n">3</div><div class="step-content"><div class="step-title">Outcome check-ins at 30/90/180 days</div><div class="step-desc">Automated emails. Structured forms. Verdicts feed Group Intelligence Profile.</div></div></div>
+          <div class="step-item"><div class="step-n">4</div><div class="step-content"><div class="step-title">Pattern Detector runs weekly</div><div class="step-desc">LangGraph multi-agent, Sunday 03:00 UTC. Surfaces systematic decision-making patterns.</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- §3 ARCHITECTURE -->
+    <div class="section" id="s3">
+      <div class="section-header">
+        <span class="section-num-badge">§03</span>
+        <h2 class="section-title">System Architecture</h2>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">architecture</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre>┌──────────────────────────────────────────────────────────┐
+│                     CLIENT LAYER                         │
+│  Web App (Next.js 14) │ Zoom Sidebar │ Teams Bot         │
+└──────────────────────────────┬───────────────────────────┘
+                               │ HTTPS / WSS
+┌──────────────────────────────▼───────────────────────────┐
+│           API GATEWAY (FastAPI 0.111.0 + Nginx)          │
+│      Auth0 JWT · RLS injection · Rate limiting · CORS    │
+└────┬──────────┬──────────────┬──────────────┬────────────┘
+     │          │              │              │
+  Survey    Meeting         AI Engine    Decision
+  Engine    Stream Proc    (5 agents)   Library
+     │          │              │              │
+┌────▼──────────▼──────────────▼──────────────▼────────────┐
+│                      DATA LAYER                          │
+│  PostgreSQL 16 (RLS)  ·  Redis 7  ·  Pinecone           │
+│  InfluxDB 2.7  ·  S3 (recordings)  ·  Secrets Manager   │
+└──────────────────────────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────┐
+│                     WORKER LAYER                         │
+│  Celery 5 + Redis broker  ·  Celery Beat scheduler       │
+│  survey-worker(×2)  ·  intelligence-worker(×4)           │
+└──────────────────────────────────────────────────────────┘</pre>
+      </div>
+
+      <p class="desc" style="margin-top:12px">Architecture principles — non-negotiable:</p>
+      <div class="constraint-list">
+        <div class="constraint-item"><span class="constraint-num">#1</span><span class="constraint-text"><strong style="color:var(--text)">Privacy by default, not by configuration</strong> — anonymization happens at collection; cannot be toggled off by admins</span></div>
+        <div class="constraint-item"><span class="constraint-num">#2</span><span class="constraint-text"><strong style="color:var(--text)">Fail silent in live meetings</strong> — Quorum outage must not disrupt the meeting; circuit breakers on all real-time components</span></div>
+        <div class="constraint-item"><span class="constraint-num">#3</span><span class="constraint-text"><strong style="color:var(--text)">Phase 1 has no dependencies on Phase 2</strong> — survey + tension map works standalone; deploy and charge for it first</span></div>
+        <div class="constraint-item"><span class="constraint-num">#4</span><span class="constraint-text"><strong style="color:var(--text)">RLS before any production data</strong> — PostgreSQL Row Level Security is the last line of defense against cross-org leakage</span></div>
+        <div class="constraint-item"><span class="constraint-num">#5</span><span class="constraint-text"><strong style="color:var(--text)">Never call Claude without Instructor</strong> — raw JSON parsing is a production disaster; <code>instructor.from_anthropic()</code> always</span></div>
+      </div>
+    </div>
+
+    <!-- §4 TECH STACK -->
+    <div class="section" id="s4">
+      <div class="section-header">
+        <span class="section-num-badge">§04</span>
+        <h2 class="section-title">Tech Stack (All Versions Pinned)</h2>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>Layer</th><th>Technology</th><th>Version</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td>Backend Runtime</td><td>Python</td><td><code>3.12</code></td><td>Type improvements, async, performance</td></tr>
+          <tr><td>API Framework</td><td>FastAPI</td><td><code>0.111.0</code></td><td>Async, WebSocket, OpenAPI auto-gen</td></tr>
+          <tr><td>Validation</td><td>Pydantic</td><td><code>2.7.4</code></td><td>5-17x faster than v1, Instructor compatible</td></tr>
+          <tr><td>ORM</td><td>SQLAlchemy async</td><td><code>2.0.30</code></td><td>Async queries, RLS, type-safe</td></tr>
+          <tr><td>Task Queue</td><td>Celery + Redis</td><td><code>5.4.0</code></td><td>Survey sends, AI generation, outcomes</td></tr>
+          <tr><td>Primary LLM</td><td>Claude Sonnet 4</td><td><code>claude-sonnet-4-20250514</code></td><td>All 5 AI agents</td></tr>
+          <tr><td>LLM Wrapper</td><td>Instructor</td><td><code>1.4.3</code></td><td>Pydantic-validated structured output, auto-retry</td></tr>
+          <tr><td>Embeddings</td><td>OpenAI text-embedding-3-large</td><td><code>1.35.0</code></td><td>Decision library semantic search</td></tr>
+          <tr><td>STT</td><td>Deepgram Nova-2</td><td><code>3.5.0</code></td><td>300-400ms latency, speaker diarization</td></tr>
+          <tr><td>Vector DB</td><td>Pinecone</td><td><code>4.1.0</code></td><td>Decision embeddings (1536 dim, cosine)</td></tr>
+          <tr><td>Time-series</td><td>InfluxDB</td><td><code>2.7</code></td><td>Speaking time metrics per speaker_hash</td></tr>
+          <tr><td>Multi-agent</td><td>LangGraph</td><td><code>0.2.0</code></td><td>Pattern Detector only</td></tr>
+          <tr><td>Frontend</td><td>Next.js App Router</td><td><code>14.2.4</code></td><td>Server components + WebSocket client UI</td></tr>
+          <tr><td>State</td><td>Zustand + TanStack Query</td><td><code>4.5.2 / 5.50.0</code></td><td>Client state / server state separation</td></tr>
+          <tr><td>Auth</td><td>Auth0</td><td><code>nextjs-auth0@3.5.0</code></td><td>PKCE, SAML/SSO, enterprise orgs</td></tr>
+          <tr><td>Billing</td><td>Stripe</td><td><code>10.6.0</code></td><td>Seat-based metered billing</td></tr>
+          <tr><td>Email</td><td>SendGrid</td><td><code>6.11.0</code></td><td>Survey invites, reminders, outcome check-ins</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- §5 DATA MODELS -->
+    <div class="section" id="s5">
+      <div class="section-header">
+        <span class="section-num-badge">§05</span>
+        <h2 class="section-title">Complete Data Models</h2>
+      </div>
+
+      <div class="callout callout-info">
+        <strong>📐 Schema Conventions</strong>
+        All PKs: UUID via <code>gen_random_uuid()</code>. All timestamps: TIMESTAMPTZ (UTC always). All FK have explicit ON DELETE behavior. RLS enabled on all core tables before any production data enters.
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python — Organization + User</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">class</span> <span class="cls">Organization</span>(Base):
+    <span class="attr">__tablename__</span> = <span class="str">"organizations"</span>
+    id: UUID (PK, gen_random_uuid())
+    name: str (NOT NULL)
+    domain: str (nullable)              <span class="cm"># "acme.com" for SSO</span>
+    plan: Enum[<span class="str">"starter","growth","enterprise"</span>]
+    seat_count: int (DEFAULT 5)
+    stripe_customer_id: str (UNIQUE, nullable)
+    auth0_org_id: str (UNIQUE, nullable)
+    settings: JSONB                     <span class="cm"># ai_context, recording_consent, platforms</span>
+    created_at / updated_at: TIMESTAMPTZ
+
+<span class="kw">class</span> <span class="cls">User</span>(Base):
+    <span class="attr">__tablename__</span> = <span class="str">"users"</span>
+    id: UUID (PK)
+    org_id: UUID (FK → organizations, CASCADE DELETE)
+    auth0_id: str (UNIQUE, NOT NULL)
+    email: str (NOT NULL)
+    role: Enum[<span class="str">"admin","facilitator","member"</span>]
+    last_active_at: TIMESTAMPTZ (nullable)
+    <span class="cm"># CRITICAL: No individual performance data EVER stored here</span>
+    UNIQUE(org_id, email)</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python — Survey Response (ANONYMIZED)</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">class</span> <span class="cls">SurveyResponse</span>(Base):
+    <span class="attr">__tablename__</span> = <span class="str">"survey_responses"</span>
+    id: UUID (PK)
+    meeting_id: UUID (FK, CASCADE DELETE)
+
+    <span class="cm"># ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+    <span class="cm"># CRITICAL: respondent_hash = HMAC-SHA256(user_id:meeting_id)</span>
+    <span class="cm"># using RESPONDENT_HASH_SECRET from AWS Secrets Manager ONLY.</span>
+    <span class="cm"># - Deterministic: same user+meeting → same hash</span>
+    <span class="cm"># - Irreversible: cryptographically impossible to reverse</span>
+    <span class="cm"># - Meeting-scoped: different hash per meeting</span>
+    <span class="cm"># - Secret-protected: requires server secret to compute</span>
+    <span class="cm"># ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+    respondent_hash: str (NOT NULL)
+
+    responses: JSONB
+    <span class="cm"># [{question_id, question_text, answer, confidence: int|null}]</span>
+    UNIQUE(meeting_id, respondent_hash)  <span class="cm"># one per person per meeting</span>
+
+<span class="cm"># NO index on respondent_hash — NEVER query "responses by this person"</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python — Decision + Outcome</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">class</span> <span class="cls">Decision</span>(Base):
+    <span class="attr">__tablename__</span> = <span class="str">"decisions"</span>
+    id: UUID; org_id: UUID; meeting_id: UUID (nullable)
+    title: str; description: TEXT; domain: str; decision_type: Enum
+    options_considered: JSONB   <span class="cm"># [{option, pros, cons, was_chosen}]</span>
+    key_assumptions: JSONB      <span class="cm"># [{assumption, confidence, check_in_question}]</span>
+    dissenting_views: JSONB     <span class="cm"># [{view, source: "survey"|"meeting"}] — ALWAYS anonymous</span>
+    team_confidence: float      <span class="cm"># 0.0-1.0 stated at decision time</span>
+
+    <span class="cm"># Auto-set by DB trigger on INSERT:</span>
+    check_in_30d_at: TIMESTAMPTZ  <span class="cm"># created_at + 30 days</span>
+    check_in_90d_at: TIMESTAMPTZ  <span class="cm"># created_at + 90 days</span>
+    check_in_180d_at: TIMESTAMPTZ <span class="cm"># created_at + 180 days</span>
+    check_in_30d_sent / 90d_sent / 180d_sent: bool
+
+<span class="kw">class</span> <span class="cls">DecisionOutcome</span>(Base):
+    <span class="attr">__tablename__</span> = <span class="str">"decision_outcomes"</span>
+    outcome_verdict: Enum[<span class="str">"correct","partially_correct","incorrect",</span>
+                          <span class="str">"too_early_to_tell","decision_no_longer_relevant"</span>]
+    <span class="cm"># Auto-computed by DB trigger: correct=1.0, partial=0.5, incorrect=0.0</span>
+    prediction_accuracy_score: float (nullable)</pre>
+      </div>
+    </div>
+
+    <!-- §6 ANONYMIZATION -->
+    <div class="section" id="s6">
+      <div class="section-header">
+        <span class="section-num-badge">§06</span>
+        <h2 class="section-title">Anonymization System</h2>
+        <div class="section-meta"><span class="badge badge-prod">Cryptographic</span></div>
+      </div>
+
+      <div class="callout callout-critical">
+        <strong>🔴 Cryptographic Guarantee</strong>
+        Even with full database read access + the complete user list, an attacker <strong>cannot de-anonymize any respondent</strong> without the HMAC secret stored in AWS Secrets Manager. This is the core privacy guarantee of the entire product.
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python — app/core/security.py</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">import</span> hashlib, hmac
+<span class="kw">from</span> app.core.config <span class="kw">import</span> settings
+
+<span class="kw">def</span> <span class="fn">anonymize_respondent</span>(user_id: str, meeting_id: str) -> str:
+    <span class="str">"""
+    One-way HMAC-SHA256. Properties:
+    - Deterministic: same user+meeting → same hash
+    - Irreversible: cannot recover user_id from hash
+    - Meeting-scoped: different hash per meeting (no cross-meeting tracking)
+    - Secret-protected: requires RESPONDENT_HASH_SECRET
+
+    Secret is in AWS Secrets Manager ONLY. Never in DB or code.
+    Rotate annually. Never rotate while survey_open meetings exist.
+    """</span>
+    secret = settings.RESPONDENT_HASH_SECRET.encode()
+    message = f<span class="str">"{user_id}:{meeting_id}"</span>.encode()
+    <span class="kw">return</span> hmac.<span class="fn">new</span>(secret, message, hashlib.sha256).hexdigest()[:<span class="num">20</span>]
+
+<span class="kw">def</span> <span class="fn">anonymize_speaker</span>(platform_id: str, meeting_id: str) -> str:
+    <span class="str">"""Meeting-scoped. Same person = different hash per meeting."""</span>
+    secret = settings.SPEAKER_HASH_SECRET.encode()
+    message = f<span class="str">"{platform_id}:{meeting_id}"</span>.encode()
+    <span class="kw">return</span> hmac.<span class="fn">new</span>(secret, message, hashlib.sha256).hexdigest()[:<span class="num">16</span>]
+
+<span class="kw">def</span> <span class="fn">verify_survey_token</span>(token: str, db_token: str | <span class="bool">None</span>) -> bool:
+    <span class="str">"""Constant-time comparison — prevents timing attacks."""</span>
+    <span class="kw">if not</span> db_token: <span class="kw">return False</span>
+    <span class="kw">return</span> hmac.<span class="fn">compare_digest</span>(token.encode(), db_token.encode())</pre>
+      </div>
+
+      <p class="desc">Required adversarial test coverage (<code>tests/unit/test_anonymization.py</code>):</p>
+      <div class="constraint-list">
+        <div class="constraint-item"><span class="constraint-num">✓</span><span class="constraint-text">Same user + same meeting → same hash (determinism for duplicate-check)</span></div>
+        <div class="constraint-item"><span class="constraint-num">✓</span><span class="constraint-text">Same user + different meetings → different hashes (no cross-meeting tracking)</span></div>
+        <div class="constraint-item"><span class="constraint-num">✓</span><span class="constraint-text">Different users + same meeting → different hashes (no confusion)</span></div>
+        <div class="constraint-item"><span class="constraint-num">✓</span><span class="constraint-text">Hash length fixed regardless of input length (no length leakage)</span></div>
+        <div class="constraint-item"><span class="constraint-num">✓</span><span class="constraint-text">Brute force with full user list fails without secret (attacker simulation)</span></div>
+        <div class="constraint-item"><span class="constraint-num">✓</span><span class="constraint-text">user_id never appears in application logs (no accidental PII)</span></div>
+        <div class="constraint-item"><span class="constraint-num">✓</span><span class="constraint-text">Two hashes from different meetings share no detectable pattern (no correlation)</span></div>
+      </div>
+    </div>
+
+    <!-- §7 AI ENGINE -->
+    <div class="section" id="s7">
+      <div class="section-header">
+        <span class="section-num-badge">§07</span>
+        <h2 class="section-title">AI Engine — 5 Agents</h2>
+      </div>
+
+      <div class="callout callout-critical">
+        <strong>🔴 Mandatory Rule</strong>
+        All LLM calls MUST use Instructor. Never call Claude directly and parse raw JSON. Use <code>instructor.from_anthropic(Anthropic())</code> with a Pydantic <code>response_model</code>. Instructor handles schema validation, retry on failure, and eliminates JSON fragility at scale.
+      </div>
+
+      <!-- Agent 1 -->
+      <div class="agent-card">
+        <div class="agent-header">
+          <div class="agent-num">1</div>
+          <div class="agent-name">Survey Designer</div>
+          <div class="agent-trigger">Trigger: Meeting created</div>
+        </div>
+        <div class="agent-specs">
+          <div class="agent-spec">Latency: <span>&lt;30s</span></div>
+          <div class="agent-spec">Model: <span>claude-sonnet-4-20250514</span></div>
+          <div class="agent-spec">Output: <span>4–6 questions</span></div>
+        </div>
+        <div class="code-block" style="margin:0">
+          <div class="code-header"><span class="code-lang">python — Pydantic Schema</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="kw">class</span> <span class="cls">SurveyQuestion</span>(BaseModel):
+    id: str; text: str
+    type: Literal[<span class="str">"scale_1_10","multiple_choice","open_text","ranked_choice"</span>]
+    options: list[str] | <span class="bool">None</span>
+    include_confidence_rating: bool  <span class="cm"># True for ALL opinion questions</span>
+    tension_hypothesis: str          <span class="cm"># what conflict this surfaces (internal)</span>
+
+<span class="cm"># QUALITY GATES (enforced in code, max 2 retries on failure):</span>
+<span class="cm"># ✓ ≥4 questions</span>
+<span class="cm"># ✓ Has "worried nobody will say" question</span>
+<span class="cm"># ✓ Has "what would change your mind" question</span>
+<span class="cm"># ✓ All opinion questions have confidence_rating=True</span>
+<span class="cm"># ✓ No generic phrasing ("what do you think about X")</span></pre>
+        </div>
+      </div>
+
+      <!-- Agent 2 -->
+      <div class="agent-card">
+        <div class="agent-header">
+          <div class="agent-num">2</div>
+          <div class="agent-name">Tension Analyst</div>
+          <div class="agent-trigger">Trigger: Survey closes</div>
+        </div>
+        <div class="agent-specs">
+          <div class="agent-spec">Latency: <span>&lt;45s</span></div>
+          <div class="agent-spec">Min response rate: <span>30% (warns) / 50% (full confidence)</span></div>
+        </div>
+        <div class="code-block" style="margin:0">
+          <div class="code-header"><span class="code-lang">python — Response Rate Gating</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="kw">async def</span> <span class="fn">generate_tension_map</span>(meeting_id) -> tuple[TensionMapOutput | <span class="bool">None</span>, str]:
+    rate = <span class="kw">await</span> <span class="fn">get_response_rate</span>(meeting_id)
+
+    <span class="kw">if</span> rate < <span class="num">0.30</span>:
+        <span class="kw">return None</span>, <span class="str">"insufficient_responses"</span>  <span class="cm"># hard refuse</span>
+
+    output = <span class="kw">await</span> <span class="fn">run_tension_analyst</span>(meeting_id)
+
+    <span class="kw">if</span> rate < <span class="num">0.50</span>:
+        output.confidence = <span class="fn">min</span>(output.confidence, <span class="num">0.40</span>)
+        output.confidence_caveat = (
+            f<span class="str">"Only {int(rate*100)}% responded. Treat as directional."</span>
+        )
+        <span class="kw">return</span> output, <span class="str">"low_confidence"</span>
+
+    <span class="kw">return</span> output, <span class="str">"ok"</span>
+
+<span class="cm"># ANONYMIZATION RULES IN PROMPT (non-negotiable):</span>
+<span class="cm"># ✗ Never quote any response verbatim</span>
+<span class="cm"># ✗ Never say "one respondent said"</span>
+<span class="cm"># ✗ Groups < 5: aggregate aggressively (paraphrase can de-anonymize)</span>
+<span class="cm"># ✓ Do NOT soften real disagreements — facilitators need truth</span>
+<span class="cm"># ✓ Surface tension when confidence scores diverge even if answers agree</span></pre>
+        </div>
+      </div>
+
+      <!-- Agent 3 -->
+      <div class="agent-card">
+        <div class="agent-header">
+          <div class="agent-num">3</div>
+          <div class="agent-name">Live Intelligence Agent</div>
+          <div class="agent-trigger">Trigger: Every 30s during meeting</div>
+        </div>
+        <div class="agent-specs">
+          <div class="agent-spec">LLM latency: <span>&lt;3s</span></div>
+          <div class="agent-spec">Architecture: <span>3-tier detection</span></div>
+        </div>
+        <div class="code-block" style="margin:0">
+          <div class="code-header"><span class="code-lang">python — 3-Tier Detection Pipeline</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="cm"># TIER 1: HiPPO (rule-based, ~1ms) — runs EVERY 30s</span>
+<span class="kw">def</span> <span class="fn">detect_hippo</span>(speaking, total_sec, elapsed_sec, alerts_delivered):
+    <span class="kw">if</span> elapsed_sec < <span class="num">300</span>: <span class="kw">return None</span>  <span class="cm"># 5-min minimum</span>
+    <span class="kw">if</span> alerts_delivered >= <span class="num">2</span>: <span class="kw">return None</span>  <span class="cm"># cap at 2 per meeting</span>
+    <span class="kw">for</span> hash, secs <span class="kw">in</span> speaking.items():
+        pct = secs / total_sec
+        <span class="kw">if</span> pct > <span class="num">0.45</span>: urgency = <span class="str">"high"</span>
+        <span class="kw">elif</span> pct > <span class="num">0.38</span>: urgency = <span class="str">"medium"</span>
+        <span class="kw">else</span>: <span class="kw">continue</span>
+        <span class="kw">return</span> Alert(type=<span class="str">"hippo"</span>, urgency=urgency, ...)
+
+<span class="cm"># TIER 2: Groupthink Precheck (rule-based, ~1ms)</span>
+consensus_signals = [<span class="str">"i agree"</span>, <span class="str">"totally"</span>, <span class="str">"let's go with"</span>,
+    <span class="str">"sounds good"</span>, <span class="str">"we're aligned"</span>, <span class="str">"move forward"</span>, <span class="str">"same page"</span>]
+<span class="cm"># fires LLM if count ≥ 3 AND tension_score > 0.35 AND elapsed > 8min</span>
+
+<span class="cm"># TIER 3: Missing Perspective (Pinecone semantic, ~200ms)</span>
+<span class="cm"># cosine_similarity(embed(last 40 chunks), embed(tension_topic)) < 0.35</span>
+<span class="cm"># → topic not discussed → fire LLM</span>
+<span class="cm"># cap: 3 missing-perspective alerts max per meeting</span>
+
+<span class="cm"># LLM EVALUATION (only if tier 2 or 3 fires):</span>
+<span class="cm"># Returns: {"action": "monitor"} (most common case)</span>
+<span class="cm"># OR {"action": "intervene", "type": ..., "message": ..., "suggested_question": ...}</span>
+<span class="cm"># Rule: intervene ONLY when >80% confident. False positives destroy trust.</span></pre>
+        </div>
+      </div>
+
+      <!-- Agent 4 -->
+      <div class="agent-card">
+        <div class="agent-header">
+          <div class="agent-num">4</div>
+          <div class="agent-name">Post-Mortem Generator</div>
+          <div class="agent-trigger">Trigger: Meeting ends (≤24hr)</div>
+        </div>
+        <div class="agent-specs">
+          <div class="agent-spec">Latency: <span>&lt;60s</span></div>
+          <div class="agent-spec">Key rule: <span>Assumptions must be SPECIFIC & MEASURABLE</span></div>
+        </div>
+        <div class="desc" style="font-size:13px">Generates structured post-mortem with executive summary, decisions (options considered, key assumptions, measurable success criteria at 30/90/180 days), process observations (warning signs detected, what went well), and open questions. Dissenting views come from anonymous pre-survey ONLY. Never attributed.</div>
+      </div>
+
+      <!-- Agent 5 -->
+      <div class="agent-card">
+        <div class="agent-header">
+          <div class="agent-num">5</div>
+          <div class="agent-name">Pattern Detector</div>
+          <div class="agent-trigger">Trigger: Weekly, Sunday 03:00 UTC</div>
+        </div>
+        <div class="agent-specs">
+          <div class="agent-spec">Latency: <span>&lt;5 min</span></div>
+          <div class="agent-spec">Orchestration: <span>LangGraph multi-agent</span></div>
+          <div class="agent-spec">Min sample: <span>5 data points per pattern</span></div>
+        </div>
+        <div class="desc" style="font-size:13px">Pre-computes domain accuracy (Wilson CIs), overconfidence delta, temporal patterns, participation correlation — then passes to LLM for interpretation. Only surfaces patterns with statistical significance (n≥5). Actionable interventions only. No patterns that could identify individuals.</div>
+      </div>
+    </div>
+
+    <!-- §8 API -->
+    <div class="section" id="s8">
+      <div class="section-header">
+        <span class="section-num-badge">§08</span>
+        <h2 class="section-title">API Specification</h2>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">REST endpoints — complete reference</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="cm"># ORGANIZATION</span>
+<span class="kw">GET</span>    /org                                    get profile
+<span class="kw">PATCH</span>  /org                                    update settings
+<span class="kw">GET</span>    /org/intelligence-profile               Group Intelligence Profile
+
+<span class="cm"># MEETINGS</span>
+<span class="kw">POST</span>   /meetings                               create meeting
+<span class="kw">GET</span>    /meetings                               list (status, domain, cursor, limit)
+<span class="kw">GET</span>    /meetings/{id}                          full detail + tension map (facilitator only)
+<span class="kw">PATCH</span>  /meetings/{id}                          update (not after status=live)
+<span class="kw">DELETE</span> /meetings/{id}                          cancel
+
+<span class="cm"># SURVEY PHASE</span>
+<span class="kw">POST</span>   /meetings/{id}/survey/generate          → 202 + job_id
+<span class="kw">GET</span>    /meetings/{id}/survey/generate/{job_id} poll result
+<span class="kw">GET</span>    /meetings/{id}/survey                   get questions (token auth, no JWT)
+<span class="kw">POST</span>   /meetings/{id}/survey/respond           submit response (X-Survey-Token header)
+<span class="kw">GET</span>    /meetings/{id}/survey/status            response rate (facilitator only)
+<span class="kw">POST</span>   /meetings/{id}/tension-map/generate     → 202 + job_id
+<span class="kw">GET</span>    /meetings/{id}/tension-map              get tension map (facilitator only)
+<span class="kw">GET</span>    /meetings/{id}/facilitator-brief        markdown brief (facilitator only)
+
+<span class="cm"># LIVE SESSION</span>
+<span class="kw">POST</span>   /meetings/{id}/session/start            bot joins, session starts
+<span class="kw">WS</span>     /meetings/{id}/session/stream           real-time WebSocket
+<span class="kw">POST</span>   /meetings/{id}/session/end              end session
+<span class="kw">GET</span>    /meetings/{id}/session/summary          post-session report
+
+<span class="cm"># DECISIONS & OUTCOMES</span>
+<span class="kw">POST</span>   /decisions                              create standalone
+<span class="kw">GET</span>    /decisions                              list with filters
+<span class="kw">GET</span>    /decisions/{id}                         detail + outcomes + similar decisions
+<span class="kw">POST</span>   /decisions/{id}/post-mortem             submit post-mortem
+<span class="kw">POST</span>   /decisions/{id}/outcomes               record outcome check-in
+
+<span class="cm"># INTELLIGENCE</span>
+<span class="kw">GET</span>    /intelligence/patterns                  all GIP patterns
+<span class="kw">GET</span>    /intelligence/domain/{domain}           domain-specific analysis
+<span class="kw">GET</span>    /intelligence/calibration               confidence vs. accuracy curve
+
+<span class="cm"># WEBHOOKS (signature-verified)</span>
+<span class="kw">POST</span>   /webhooks/zoom                          Zoom meeting lifecycle
+<span class="kw">POST</span>   /webhooks/stripe                        billing events
+
+<span class="cm"># GDPR</span>
+<span class="kw">GET</span>    /gdpr/export                            export all org data (admin)
+<span class="kw">DELETE</span> /gdpr/erase                             delete all org data (24hr SLA)</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">WebSocket Protocol</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="cm">// CLIENT → SERVER</span>
+{<span class="attr">"type"</span>: <span class="str">"acknowledge_alert"</span>, <span class="attr">"alert_id"</span>: <span class="str">"uuid"</span>, <span class="attr">"response"</span>: <span class="str">"handle_it|aware|dismissed"</span>}
+{<span class="attr">"type"</span>: <span class="str">"mark_decision"</span>, <span class="attr">"title"</span>: <span class="str">"..."</span>, <span class="attr">"description"</span>: <span class="str">"..."</span>}
+{<span class="attr">"type"</span>: <span class="str">"request_question"</span>, <span class="attr">"context"</span>: <span class="str">"We're discussing timeline now"</span>}
+
+<span class="cm">// SERVER → CLIENT</span>
+{<span class="attr">"type"</span>: <span class="str">"transcript_chunk"</span>, <span class="attr">"data"</span>: {<span class="attr">"speaker_hash"</span>: <span class="str">"a1b2c3d4"</span>, <span class="attr">"text"</span>: <span class="str">"..."</span>, <span class="attr">"start_seconds"</span>: <span class="num">342</span>}}
+{<span class="attr">"type"</span>: <span class="str">"intelligence_alert"</span>, <span class="attr">"data"</span>: {
+    <span class="attr">"alert_id"</span>: <span class="str">"uuid"</span>,
+    <span class="attr">"type"</span>: <span class="str">"groupthink|hippo|missing_perspective|assumption_blindspot"</span>,
+    <span class="attr">"urgency"</span>: <span class="str">"low|medium|high"</span>,
+    <span class="attr">"message"</span>: <span class="str">"2 sentences max for facilitator"</span>,
+    <span class="attr">"suggested_question"</span>: <span class="str">"1 sentence, exact question to ask"</span>
+}}
+{<span class="attr">"type"</span>: <span class="str">"speaking_update"</span>, <span class="attr">"data"</span>: {<span class="attr">"distribution"</span>: [{<span class="attr">"hash"</span>: <span class="str">"a1b2"</span>, <span class="attr">"pct"</span>: <span class="num">0.42</span>}]}}</pre>
+      </div>
+    </div>
+
+    <!-- §9 PIPELINE -->
+    <div class="section" id="s9">
+      <div class="section-header">
+        <span class="section-num-badge">§09</span>
+        <h2 class="section-title">Real-Time Pipeline</h2>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">architecture — real-time flow</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre>Meeting audio (Zoom/Teams/Meet)
+       │
+       ▼ Deepgram Nova-2 WebSocket (~300ms latency)
+       │ interim_results=False, punctuate=True, diarize=True
+       │
+       ├──► anonymize_speaker(zoom_id, meeting_id) → speaker_hash
+       │
+       ├──► InfluxDB: speaking_time {org_id, meeting_id, speaker_hash, seconds}
+       │
+       ├──► Redis: rolling_buffer (last 200 chunks ≈ 10min, TTL 4hr)
+       │
+       ├──► PostgreSQL: live_transcript_chunks (persisted)
+       │
+       └──► WebSocket broadcast: transcript_chunk to facilitator
+
+EVERY 30 SECONDS (asyncio task):
+       │
+       ├── Tier 1 HiPPO (O(n) speakers, ~1ms)
+       │
+       ├── Tier 2 Groupthink precheck (string match, ~1ms)
+       │         if fires → Tier 3
+       │
+       ├── Tier 3 Missing Perspective (Pinecone cosine, ~200ms)
+       │         if fires → LLM
+       │
+       └── Claude evaluation (<3s) → alert or monitor
+               if intervene → IntelligenceAlert → WebSocket → facilitator sidebar</pre>
+      </div>
+
+      <div class="callout callout-success">
+        <strong>✅ Circuit Breaker Protection</strong>
+        All LLM calls wrapped in circuit breaker: failure_threshold=3, recovery_timeout=60s. On circuit OPEN: returns None. Callers handle None gracefully — meeting continues uninterrupted. Quorum degrades gracefully; the meeting never stops.
+      </div>
+    </div>
+
+    <!-- §10 COST MODEL -->
+    <div class="section" id="s10">
+      <div class="section-header">
+        <span class="section-num-badge">§10</span>
+        <h2 class="section-title">LLM Cost Model</h2>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>Component</th><th>Input tokens</th><th>Output tokens</th><th>Cost/call</th></tr></thead>
+        <tbody>
+          <tr><td>Survey Designer</td><td>~800</td><td>~600</td><td>~$0.004</td></tr>
+          <tr><td>Tension Analyst</td><td>~2,000</td><td>~1,000</td><td>~$0.009</td></tr>
+          <tr><td>Live Agent (per 30s eval)</td><td>~1,500</td><td>~200</td><td>~$0.005</td></tr>
+          <tr><td>Post-Mortem Generator</td><td>~2,500</td><td>~1,500</td><td>~$0.012</td></tr>
+          <tr><td>Pattern Detector</td><td>~8,000</td><td>~2,000</td><td>~$0.030</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-success">
+        <strong>💰 Unit Economics Validation</strong>
+        Org with 5 meetings/month (10 seats × $49 = $490 MRR): Survey $0.02 + Tension $0.045 + Live $3.00 + Post-mortem $0.06 + Patterns $0.12 = <strong>~$3.25/month LLM cost = 0.66% of revenue</strong>. Gross margin: 98.6%. Healthy at scale.
+      </div>
+    </div>
+
+    <!-- §11 PROMPT VERSIONING -->
+    <div class="section" id="s11">
+      <div class="section-header">
+        <span class="section-num-badge">§11</span>
+        <h2 class="section-title">Prompt Versioning & A/B Testing</h2>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python — consistent hash routing</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">async def</span> <span class="fn">get_prompt</span>(prompt_type: str, org_id: str) -> str:
+    <span class="str">"""Consistent hashing: same org always gets same A/B bucket."""</span>
+    experiment = <span class="kw">await</span> db.<span class="fn">get_experiment</span>(prompt_type)
+    <span class="kw">if</span> experiment <span class="kw">and</span> experiment.traffic_pct > <span class="num">0</span>:
+        bucket = <span class="fn">int</span>(hashlib.<span class="fn">md5</span>(org_id.encode()).hexdigest(), <span class="num">16</span>) % <span class="num">100</span>
+        <span class="kw">if</span> bucket < experiment.traffic_pct * <span class="num">100</span>:
+            <span class="kw">return</span> experiment.content
+    <span class="kw">return</span> (<span class="kw">await</span> db.<span class="fn">get_active_prompt</span>(prompt_type)).content</pre>
+      </div>
+
+      <p class="desc">Minimum eval scores before promotion to production:</p>
+      <div class="constraint-list">
+        <div class="constraint-item"><span class="constraint-num">S1</span><span class="constraint-text">Survey Designer: avg score ≥ 0.85 across all eval cases</span></div>
+        <div class="constraint-item"><span class="constraint-num">S2</span><span class="constraint-text">Tension Analyst: avg score ≥ 0.80 (lower due to synthesis complexity)</span></div>
+        <div class="constraint-item"><span class="constraint-num">S3</span><span class="constraint-text">Live Agent: false positive rate < 10% on monitor-only fixtures</span></div>
+        <div class="constraint-item"><span class="constraint-num">S4</span><span class="constraint-text">Post-Mortem: key_assumptions populated in ≥ 90% of cases</span></div>
+        <div class="constraint-item"><span class="constraint-num">S5</span><span class="constraint-text">Pattern Detector: no patterns surfaced with n < 5 data points</span></div>
+      </div>
+    </div>
+
+    <!-- §12 SECURITY -->
+    <div class="section" id="s12">
+      <div class="section-header">
+        <span class="section-num-badge">§12</span>
+        <h2 class="section-title">Security & Environment Variables</h2>
+      </div>
+
+      <p class="desc">Multi-tenancy defense in depth (4 independent layers):</p>
+      <div class="constraint-list">
+        <div class="constraint-item"><span class="constraint-num">L1</span><span class="constraint-text"><strong style="color:var(--text)">JWT layer</strong>: org_id extracted from Auth0 verified token (RS256 + JWKS, 1hr TTL, cached)</span></div>
+        <div class="constraint-item"><span class="constraint-num">L2</span><span class="constraint-text"><strong style="color:var(--text)">Application layer</strong>: all queries include <code>WHERE org_id = {user.org_id}</code></span></div>
+        <div class="constraint-item"><span class="constraint-num">L3</span><span class="constraint-text"><strong style="color:var(--text)">Database layer</strong>: PostgreSQL RLS <code>SET LOCAL app.current_org_id = {org_id}</code> — app cannot bypass</span></div>
+        <div class="constraint-item"><span class="constraint-num">L4</span><span class="constraint-text"><strong style="color:var(--text)">Audit layer</strong>: every data access logged to immutable audit_log (REVOKE UPDATE/DELETE from app user)</span></div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash — all required environment variables</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="cm"># App</span>
+APP_ENV=production | staging | development
+SECRET_KEY=<span class="str">&lt;openssl rand -hex 32&gt;</span>
+
+<span class="cm"># Auth0</span>
+AUTH0_DOMAIN=quorum.auth0.com
+AUTH0_CLIENT_ID=... AUTH0_CLIENT_SECRET=... AUTH0_AUDIENCE=https://api.quorum.ai
+
+<span class="cm"># Databases</span>
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/quorum
+REDIS_URL=redis://host:6379/0
+INFLUXDB_URL=http://host:8086 INFLUXDB_TOKEN=...
+
+<span class="cm"># AI (REQUIRED)</span>
+ANTHROPIC_API_KEY=...       <span class="cm"># Claude Sonnet 4 — all reasoning</span>
+OPENAI_API_KEY=...          <span class="cm"># text-embedding-3-large — embeddings only</span>
+PINECONE_API_KEY=...        <span class="cm"># decision library</span>
+DEEPGRAM_API_KEY=...        <span class="cm"># Nova-2 real-time STT</span>
+
+<span class="cm"># Anonymization — ROTATE ANNUALLY, NEVER commit to repo</span>
+SPEAKER_HASH_SECRET=<span class="str">&lt;openssl rand -hex 32&gt;</span>
+RESPONDENT_HASH_SECRET=<span class="str">&lt;openssl rand -hex 32&gt;</span>
+
+<span class="cm"># Meeting platforms</span>
+ZOOM_CLIENT_ID=... ZOOM_CLIENT_SECRET=... ZOOM_WEBHOOK_SECRET=...
+TEAMS_APP_ID=... TEAMS_APP_PASSWORD=...
+
+<span class="cm"># Communications</span>
+SENDGRID_API_KEY=... SENDGRID_FROM_EMAIL=hello@quorum.ai
+STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=...
+
+<span class="cm"># Observability</span>
+SENTRY_DSN=... DATADOG_API_KEY=...
+
+<span class="cm"># Feature flags</span>
+FEATURE_LIVE_MEETING=true FEATURE_RECORDING=false
+CELERY_TASK_ALWAYS_EAGER=false  <span class="cm"># set true in tests ONLY</span></pre>
+      </div>
+    </div>
+
+    <!-- §13 REDIS -->
+    <div class="section" id="s13">
+      <div class="section-header">
+        <span class="section-num-badge">§13</span>
+        <h2 class="section-title">Redis Key Schema</h2>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">redis — key schema</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="cm"># Session state (TTL: 4 hours)</span>
+quorum:session:{id}:state         → JSON (session metadata)
+quorum:session:{id}:speaking      → Hash {speaker_hash → seconds}
+quorum:session:{id}:alerts        → List {delivered alert IDs}
+quorum:session:{id}:buffer        → List {last 200 transcript chunks}
+
+<span class="cm"># WebSocket connections (TTL: 4 hours)</span>
+quorum:ws:{session_id}:connections → Set {connection IDs}
+
+<span class="cm"># Rate limiting (TTL: 60s)</span>
+quorum:ratelimit:{org_id}:{endpoint} → Counter
+
+<span class="cm"># Survey response lock — prevents race condition (TTL: 5s)</span>
+quorum:survey:{meeting_id}:lock   → Lock
+
+<span class="cm"># LLM response cache (TTL: 1 hour)</span>
+quorum:llm:tension:{meeting_id}   → JSON (cached tension map output)</pre>
+      </div>
+    </div>
+
+    <!-- §14 CELERY -->
+    <div class="section" id="s14">
+      <div class="section-header">
+        <span class="section-num-badge">§14</span>
+        <h2 class="section-title">Celery Task Schedule</h2>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Task</th><th>Schedule</th><th>Queue</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>send_survey_invitations</td><td>On demand</td><td>high-priority</td><td>Triggered when survey status → open</td></tr>
+          <tr><td>generate_tension_map</td><td>On demand</td><td>high-priority</td><td>Facilitators waiting — fast queue</td></tr>
+          <tr><td>send_outcome_checkins</td><td>Daily 09:00 UTC</td><td>scheduled</td><td>Per org timezone offset</td></tr>
+          <tr><td>run_pattern_detector</td><td>Sunday 03:00 UTC</td><td>scheduled</td><td>LangGraph multi-agent, ~5min</td></tr>
+          <tr><td>cleanup_expired_audio</td><td>Daily 02:00 UTC</td><td>scheduled</td><td>S3 recordings > 30 days</td></tr>
+          <tr><td>process_tension_map_queue</td><td>Every 2 min</td><td>default</td><td>Catch any missed generations</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- §15 FILE STRUCTURE -->
+    <div class="section" id="s15">
+      <div class="section-header">
+        <span class="section-num-badge">§15</span>
+        <h2 class="section-title">File Structure</h2>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">directory tree</span><button class="btn-copy" onclick="copyCode(this)">Copy</button></div>
+        <pre>quorum/
+├── app/
+│   ├── main.py                    <span class="cm"># FastAPI factory, middleware, exception handlers</span>
+│   ├── api/routers/
+│   │   ├── meetings.py surveys.py sessions.py
+│   │   ├── decisions.py outcomes.py intelligence.py
+│   │   └── webhooks.py gdpr.py
+│   ├── services/
+│   │   ├── survey_service.py
+│   │   ├── tension_map_service.py
+│   │   ├── stt_service.py         <span class="cm"># Deepgram + MeetingStreamProcessor</span>
+│   │   ├── intelligence_service.py decision_service.py
+│   │   └── pattern_service.py outcome_service.py
+│   ├── workers/tasks/
+│   │   ├── send_survey_invitations.py
+│   │   ├── generate_tension_map.py
+│   │   ├── schedule_outcome_checkins.py
+│   │   └── run_pattern_detector.py cleanup_expired_data.py
+│   ├── intelligence/agents/
+│   │   ├── survey_designer.py
+│   │   ├── tension_analyst.py
+│   │   ├── live_agent.py          <span class="cm"># 3-tier detection + circuit breaker</span>
+│   │   ├── post_mortem_generator.py
+│   │   └── pattern_detector.py    <span class="cm"># LangGraph multi-agent</span>
+│   └── core/
+│       ├── config.py database.py security.py exceptions.py logging.py
+├── tests/
+│   ├── unit/test_anonymization.py  <span class="cm"># CRITICAL adversarial tests</span>
+│   ├── unit/test_detection_algorithms.py
+│   ├── integration/test_api_surveys.py test_api_decisions.py
+│   └── ai_evals/eval_survey_designer.py eval_tension_analyst.py
+├── web/app/
+│   ├── (auth)/ (app)/
+│   │   ├── dashboard/ meetings/[id]/
+│   │   │   ├── survey/    <span class="cm"># participant UI (no auth)</span>
+│   │   │   ├── brief/     <span class="cm"># facilitator brief (role-checked)</span>
+│   │   │   ├── live/      <span class="cm"># live intelligence sidebar</span>
+│   │   │   └── decisions/
+│   │   ├── decisions/ intelligence/
+├── terraform/ .github/workflows/
+├── Dockerfile docker-compose.yml pyproject.toml alembic.ini nginx.conf Makefile</pre>
+      </div>
+    </div>
+
+    <!-- §16 BUILD ORDER -->
+    <div class="section" id="s16">
+      <div class="section-header">
+        <span class="section-num-badge">§16</span>
+        <h2 class="section-title">Build Order (Strict Sequence)</h2>
+      </div>
+
+      <div class="callout callout-warning">
+        <strong>⚠️ Build phases are interdependent</strong>
+        Do not start Phase 2 before Phase 1B is deployed and charged for. Phase 1 alone is a valuable, sellable product. Get design partners on Phase 1 before building the live meeting feature.
+      </div>
+
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-n">1A</div>
+          <div class="step-content">
+            <div class="step-title">Foundation (Weeks 1–2)</div>
+            <div class="step-desc">PostgreSQL schema + RLS + Alembic migrations → FastAPI scaffold + Auth0 JWT → Org + User CRUD → Next.js auth flow → CI pipeline</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-n">1B</div>
+          <div class="step-content">
+            <div class="step-title">Survey Engine (Weeks 3–5) ← DEPLOY & CHARGE</div>
+            <div class="step-desc">Meeting CRUD → Survey Designer agent → Anonymous submission (HMAC) → Tension Analyst → Facilitator brief → Survey UI (no-auth) → Brief UI → SendGrid emails</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-n">2A</div>
+          <div class="step-content">
+            <div class="step-title">Meeting Integration (Weeks 6–9)</div>
+            <div class="step-desc">Deepgram Nova-2 WebSocket → Speaker diarization + anonymization → InfluxDB speaking time → Redis rolling buffer → WebSocket server → Zoom Apps SDK → MeetingStreamProcessor</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-n">2B</div>
+          <div class="step-content">
+            <div class="step-title">Live Intelligence (Weeks 10–12) ← FULL CORE PRODUCT</div>
+            <div class="step-desc">HiPPO detector → Groupthink precheck → Missing Perspective (Pinecone) → Live Intelligence Agent (LLM) → Alert delivery WebSocket → Teams Bot → Meet Extension → Live sidebar UI</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-n">3</div>
+          <div class="step-content">
+            <div class="step-title">Decisions & Outcomes (Weeks 13–15)</div>
+            <div class="step-desc">Decision creation → Post-mortem generator → Outcome check-in Celery Beat → Outcome recording UI → Decision library + Pinecone semantic search</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-n">4</div>
+          <div class="step-content">
+            <div class="step-title">Group Intelligence (Weeks 16–18) ← THE MOAT</div>
+            <div class="step-desc">Pattern detector LangGraph job → GIP computation + storage → Intelligence dashboard → Pre-meeting pattern alerts → Similar past decisions feature</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-n">5</div>
+          <div class="step-content">
+            <div class="step-title">Production Hardening (Weeks 19–22)</div>
+            <div class="step-desc">Terraform AWS → GitHub Actions CI/CD → Datadog + PagerDuty → Sentry → SOC 2 Type II → SAML/SSO → Stripe billing → GDPR endpoints + DPA</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- §17 NON-NEGOTIABLES -->
+    <div class="section" id="s17">
+      <div class="section-header">
+        <span class="section-num-badge">§17</span>
+        <h2 class="section-title">Non-Negotiable Production Constraints</h2>
+      </div>
+
+      <div class="callout callout-critical">
+        <strong>🔴 These cannot be simplified or skipped</strong>
+        Every constraint below exists because violating it causes a production disaster. These are learned from real production systems, not theoretical.
+      </div>
+
+      <div class="constraint-list">
+        <div class="constraint-item"><span class="constraint-num">#1</span><span class="constraint-text"><strong style="color:var(--text)">Never call Claude without Instructor</strong> — raw JSON parsing fails unpredictably at scale; <code>instructor.from_anthropic()</code> always</span></div>
+        <div class="constraint-item"><span class="constraint-num">#2</span><span class="constraint-text"><strong style="color:var(--text)">RLS before any production data</strong> — no safe way to add PostgreSQL RLS after data exists; do it before first row</span></div>
+        <div class="constraint-item"><span class="constraint-num">#3</span><span class="constraint-text"><strong style="color:var(--text)">Anonymization secrets in AWS Secrets Manager ONLY</strong> — if these leak, the privacy guarantee is broken for all existing data</span></div>
+        <div class="constraint-item"><span class="constraint-num">#4</span><span class="constraint-text"><strong style="color:var(--text)">80% test coverage enforced in CI</strong> — <code>--cov-fail-under=80</code>; not aspirational; CI fails if below threshold</span></div>
+        <div class="constraint-item"><span class="constraint-num">#5</span><span class="constraint-text"><strong style="color:var(--text)">All AI prompts have eval suites</strong> — prompts are code; minimum quality scores enforced before promotion</span></div>
+        <div class="constraint-item"><span class="constraint-num">#6</span><span class="constraint-text"><strong style="color:var(--text)">No <code># type: ignore</code> without justification</strong> — mypy strict mode; every suppression requires an explanatory comment</span></div>
+        <div class="constraint-item"><span class="constraint-num">#7</span><span class="constraint-text"><strong style="color:var(--text)"><code>CELERY_TASK_ALWAYS_EAGER=true</code> in tests</strong> — async tasks run synchronously; required for integration test reliability</span></div>
+        <div class="constraint-item"><span class="constraint-num">#8</span><span class="constraint-text"><strong style="color:var(--text)">Facilitator brief NEVER visible to participants</strong> — separate endpoint, role-checked, not in meeting detail response for participants</span></div>
+        <div class="constraint-item"><span class="constraint-num">#9</span><span class="constraint-text"><strong style="color:var(--text)"><code>GET /meetings/{id}/survey/responses</code> returns 404</strong> — this endpoint MUST NOT EXIST; individual responses are never queryable</span></div>
+        <div class="constraint-item"><span class="constraint-num">#10</span><span class="constraint-text"><strong style="color:var(--text)">Circuit breaker on all LLM calls</strong> — failure_threshold=3, recovery_timeout=60; app degrades, meeting never interrupts</span></div>
+        <div class="constraint-item"><span class="constraint-num">#11</span><span class="constraint-text"><strong style="color:var(--text)">All migrations must be backward-compatible</strong> — old code must run against new schema; two-phase deploys for column renames</span></div>
+        <div class="constraint-item"><span class="constraint-num">#12</span><span class="constraint-text"><strong style="color:var(--text)">No stack traces in production error responses</strong> — generic message in production; full detail in development only</span></div>
+        <div class="constraint-item"><span class="constraint-num">#13</span><span class="constraint-text"><strong style="color:var(--text)">Never rotate HMAC secrets while survey_open meetings exist</strong> — rotating mid-survey breaks duplicate-submission detection</span></div>
+        <div class="constraint-item"><span class="constraint-num">#14</span><span class="constraint-text"><strong style="color:var(--text)">All dependencies pinned exactly</strong> — security patches within 48hr of CVE; monthly minor upgrades in dedicated PR; no auto-update</span></div>
+        <div class="constraint-item"><span class="constraint-num">#15</span><span class="constraint-text"><strong style="color:var(--text)">Never index respondent_hash</strong> — indexing it enables efficient "find all responses by this hash" queries; defeats anonymization intent</span></div>
+      </div>
+    </div>
+
+    <!-- §18 PRICING -->
+    <div class="section" id="s18">
+      <div class="section-header">
+        <span class="section-num-badge">§18</span>
+        <h2 class="section-title">Pricing & Business Model</h2>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>Tier</th><th>Price</th><th>Seats</th><th>Features</th></tr></thead>
+        <tbody>
+          <tr><td>Starter</td><td>$49/seat/mo</td><td>5–15</td><td>Pre-meeting surveys, tension maps, facilitator brief, decision library</td></tr>
+          <tr><td>Growth</td><td>$99/seat/mo</td><td>16–100</td><td>+ Live meeting intelligence, post-mortems, outcome tracking, Group Intelligence Profile</td></tr>
+          <tr><td>Enterprise</td><td>$149/seat/mo (custom)</td><td>100+</td><td>+ SAML/SSO, dedicated instance, API access, SLA, CSM</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-success">
+        <strong>📈 The Compounding Moat</strong>
+        3 months: Knows your team's patterns. 12 months: Can predict which decisions will be wrong. 24 months: Group Intelligence Profile is irreplaceable — switching means losing years of calibrated decision history. This is the rarest thing in B2B software: a product that is sticky because the <em>data itself</em> cannot exist anywhere else.
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-title" style="font-size:14px; color:var(--green2)">$180K ARR</div>
+          <div class="feature-desc">Month 12 target: 50 paying orgs, 3 enterprise pilots, 500+ tracked decisions</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-title" style="font-size:14px; color:var(--green2)">98.6% Gross Margin</div>
+          <div class="feature-desc">LLM costs ~0.66% of revenue. Infrastructure at full scale remains sub-2%.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-title" style="font-size:14px; color:var(--green2)">$2.5M Seed Ask</div>
+          <div class="feature-desc">18 months runway. Full product through Phase 4. 3 enterprise design partners signed.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-title" style="font-size:14px; color:var(--green2)">NPS ≥55 Target</div>
+          <div class="feature-desc">Validated from design partners before public launch. North star: decision accuracy improvement.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="border-top: 1px solid var(--border); padding: 24px 0; margin-top: 24px; text-align: center;">
+      <p style="font-size: 12px; color: var(--muted); font-family: var(--font-mono)">QUORUM Master System Prompt v2.0 — Production Build Specification</p>
+      <p style="font-size: 12px; color: var(--muted); margin-top: 4px">All 18 sections are internally consistent. Build in the exact sequence in §16.</p>
+    </div>
+
+  </main>
+</div>
+
+<!-- FULL PROMPT CONTENT (hidden, for copy-all) -->
+<div id="full-prompt-content" style="display:none">QUORUM MASTER SYSTEM PROMPT v2.0 — Complete Production Build Specification
+
+Feed this entire document as system context to any frontier AI coding agent (Claude Code, Cursor, GPT-4o). Every architectural decision, AI behavior, data model, API contract, and build constraint is defined here. Build in the exact sequence in Section 16. Do not deviate. Do not simplify.
+
+=== SECTION 1: IDENTITY & MISSION ===
+
+Product: QUORUM — Collective Intelligence Platform
+Definition: B2B AI platform making group decisions measurably better via pre-meeting anonymous elicitation, real-time meeting intelligence, and longitudinal outcome tracking.
+Problem: $37B lost annually to social dynamics failures in meetings: HiPPO effect, groupthink, information pooling failure, anchoring bias.
+Quorum IS NOT: transcription tool, task manager, performance evaluation tool, or surveillance.
+
+=== SECTION 2: THREE-PHASE PRODUCT ===
+
+Phase 1 (Before): AI generates 4-6 anonymous survey questions from agenda → participants respond via email link (no account required) → HMAC anonymization at collection → Tension Map generated (>=30% response rate required) → Facilitator receives private brief (never visible to participants).
+
+Phase 2 (During): Bot joins Zoom/Teams/Meet → Deepgram Nova-2 STT with speaker diarization → speakers immediately anonymized (meeting-scoped HMAC) → 3-tier detection every 30s (HiPPO rule ~1ms, Groupthink precheck ~1ms, Missing Perspective semantic ~200ms, LLM evaluation <3s) → alerts to facilitator sidebar ONLY → max 2 HiPPO + 3 missing-perspective alerts per meeting.
+
+Phase 3 (After): Post-mortem auto-generated within 24hr → decisions captured with options, assumptions, confidence, dissenting views → outcome check-ins at 30/90/180 days → Pattern Detector runs weekly (LangGraph, Sunday 03:00 UTC) → Group Intelligence Profile updated.
+
+=== SECTION 3: ARCHITECTURE PRINCIPLES ===
+
+1. Privacy by default — anonymization at collection, cannot be toggled off
+2. Fail silent in live meetings — circuit breakers on all real-time components
+3. Phase 1 independent of Phase 2 — deploy and charge for surveys alone first
+4. RLS before any production data — PostgreSQL Row Level Security is last line of defense
+5. Never call Claude without Instructor — raw JSON parsing is a production disaster
+
+=== SECTION 4: TECH STACK (ALL PINNED) ===
+
+Backend: Python 3.12, FastAPI 0.111.0, Pydantic 2.7.4, SQLAlchemy 2.0.30, asyncpg 0.29.0, Alembic 1.13.1, Redis 5.0.7 (hiredis), Celery 5.4.0, APScheduler 4.0.0a4, httpx 0.27.0
+AI: anthropic 0.28.0 (claude-sonnet-4-20250514), openai 1.35.0 (embeddings only), instructor 1.4.3 (MANDATORY), langgraph 0.2.0, deepgram-sdk 3.5.0, pinecone-client 4.1.0, influxdb-client 1.44.0
+Auth/Security: python-jose 3.3.0, authlib 1.3.1, passlib 1.7.4 (bcrypt), cryptography 42.0.8
+Comms: sendgrid 6.11.0, slack-sdk 3.29.0, stripe 10.6.0
+Observability: structlog 24.4.0, sentry-sdk 2.10.0, tenacity 8.5.0, orjson 3.10.6
+Frontend: Next.js 14.2.4, React 18.3.1, TypeScript 5.5.3, TanStack Query 5.50.0, Zustand 4.5.2, Tailwind 3.4.4, Recharts 2.12.7, Zod 3.23.8, @auth0/nextjs-auth0 3.5.0
+
+=== SECTION 5: DATA MODELS ===
+
+Organization: id, name, domain, plan[starter/growth/enterprise], seat_count, stripe_customer_id, auth0_org_id, settings JSONB {ai_context, recording_consent_enabled, meeting_platforms, min_survey_response_rate}
+
+User: id, org_id FK, auth0_id UNIQUE, email, role[admin/facilitator/member]. NO individual performance data ever stored.
+
+Meeting: id, org_id, created_by, title, description, scheduled_at, duration_minutes, platform, status[draft/survey_open/survey_closed/live/ended/post_mortem_pending/post_mortem_done/cancelled], agenda_items JSONB, generated_questions JSONB, tension_map JSONB, facilitator_brief TEXT, survey_response_count (auto-trigger)
+
+MeetingParticipant: id, meeting_id, user_id, role, survey_token UNIQUE (UUID token in email link)
+
+SurveyResponse: id, meeting_id, respondent_hash (HMAC-SHA256 of user_id:meeting_id using RESPONDENT_HASH_SECRET from AWS Secrets Manager ONLY), responses JSONB [{question_id, answer, confidence}]. UNIQUE(meeting_id, respondent_hash). NO index on respondent_hash.
+
+LiveMeetingSession: id, meeting_id UNIQUE, total_seconds, speaking_distribution JSONB {speaker_hash: seconds}, hippo_events JSONB, groupthink_events JSONB
+
+LiveTranscriptChunk: id, session_id, chunk_index, speaker_hash (anonymized, meeting-scoped), text, embedding_id. NO user_id ever.
+
+Decision: id, org_id, meeting_id nullable, title, description, domain, decision_type, options_considered JSONB, key_assumptions JSONB [{assumption, confidence, check_in_question}], dissenting_views JSONB (ALWAYS anonymous), team_confidence float. Auto-trigger sets check_in_30d/90d/180d_at on INSERT.
+
+DecisionOutcome: id, decision_id, outcome_verdict[correct/partially_correct/incorrect/too_early_to_tell], prediction_accuracy_score (auto-trigger: correct=1.0, partial=0.5, incorrect=0.0)
+
+GroupIntelligenceProfile: id, org_id UNIQUE, overall_accuracy_score, identified_patterns JSONB, domain_accuracy JSONB, avg_survey_response_rate, avg_speaking_time_gini, hippo_frequency_score
+
+DB Infrastructure: Extensions: pgcrypto, pg_trgm. RLS on all core tables before production. Audit log table with REVOKE UPDATE/DELETE from app user. 4 auto-triggers: set_updated_at, update_survey_response_count, set_decision_checkin_dates, set_prediction_accuracy.
+
+=== SECTION 6: ANONYMIZATION ===
+
+def anonymize_respondent(user_id, meeting_id):
+    secret = settings.RESPONDENT_HASH_SECRET.encode()
+    message = f"{user_id}:{meeting_id}".encode()
+    return hmac.new(secret, message, hashlib.sha256).hexdigest()[:20]
+
+def anonymize_speaker(platform_id, meeting_id):
+    secret = settings.SPEAKER_HASH_SECRET.encode()
+    message = f"{platform_id}:{meeting_id}".encode()
+    return hmac.new(secret, message, hashlib.sha256).hexdigest()[:16]
+
+def verify_survey_token(token, db_token):
+    if not db_token: return False
+    return hmac.compare_digest(token.encode(), db_token.encode())
+
+Required adversarial tests: same user+meeting=same hash, same user+different meetings=different hashes, different users+same meeting=different hashes, fixed hash length, brute force fails without secret, no user_id in logs, no pattern across meetings.
+
+=== SECTION 7: AI ENGINE — 5 AGENTS ===
+
+CRITICAL: All agents use Instructor. client = instructor.from_anthropic(Anthropic())
+
+Agent 1 — Survey Designer:
+Trigger: Meeting created. Model: claude-sonnet-4-20250514. Target: <30s.
+Output schema: SurveyDesignerOutput {questions: list[SurveyQuestion], design_rationale, watch_for}
+SurveyQuestion: {id, text, type[scale_1_10/multiple_choice/open_text/ranked_choice], options, include_confidence_rating, tension_hypothesis}
+Quality gates (retry on fail, max 2): >=4 questions, has "worried nobody will say" question, has "change your mind" question, all opinion questions have confidence_rating=True, no generic phrasing.
+System prompt rules: Never generic questions, every opinion question has confidence rating, include worried+falsifiability questions, neutral framing, use known tension patterns.
+
+Agent 2 — Tension Analyst:
+Trigger: Survey closes. Model: claude-sonnet-4-20250514. Target: <45s.
+Output: TensionMapOutput {consensus_areas, tension_areas, missing_from_conversation, facilitator_opening_question, watch_list, confidence, confidence_caveat}
+Response rate gating: <30% = refuse; <50% = cap confidence at 0.40 + caveat; >=50% = full.
+Anonymization rules: Never quote verbatim, never imply identifiability, <5 people aggregate aggressively, do NOT soften disagreements, surface tension when confidence diverges even if answers agree.
+
+Agent 3 — Live Intelligence Agent:
+Trigger: Every 30 seconds during meeting. Target: <3s LLM call.
+3-tier architecture:
+  Tier 1 HiPPO (rule, ~1ms): >45% speaking=HIGH, >38%=MEDIUM, cap 2 alerts/meeting, 5-min minimum
+  Tier 2 Groupthink precheck (rule, ~1ms): >=3 consensus signals ["i agree","totally","sounds good","we're aligned","move forward","same page"] + tension_score>0.35 + 8-min minimum
+  Tier 3 Missing Perspective (Pinecone, ~200ms): cosine_similarity(embed(last 40 chunks), embed(tension_topic)) < 0.35, after 55% of time, cap 3 alerts/meeting
+LLM detects: groupthink, assumption_blindspot, missing_context.
+Rule: intervene ONLY >80% confident. When in doubt: {"action": "monitor"}
+Circuit breaker: failure_threshold=3, recovery_timeout=60. On OPEN: return None, meeting continues.
+
+Agent 4 — Post-Mortem Generator:
+Trigger: Meeting ends, within 24hr. Target: <60s.
+Output: executive_summary, decisions [{title, description, options_considered, rationale, key_assumptions (SPECIFIC), dissenting_views (anonymous), success_criteria {30/90/180_days (MEASURABLE)}], process_observations {warning_signs_detected, what_went_well}, open_questions.
+Rules: Assumptions must be specific not vague. Success criteria must be measurable not vague. Dissenting views from survey ONLY, never attributed.
+
+Agent 5 — Pattern Detector (LangGraph):
+Trigger: Weekly, Sunday 03:00 UTC. Target: <5min.
+Pre-computation: domain_accuracy (Wilson CIs, n>=5), overconfidence_delta (avg stated - avg actual), temporal patterns, participation correlation.
+LLM rules: Only n>=5 patterns, actionable interventions, uncertainty language for small samples, no patterns identifying individuals.
+
+=== SECTION 8: API SPECIFICATION ===
+
+Base: https://api.quorum.ai/v1
+Auth: Authorization: Bearer {JWT} for protected endpoints; X-Survey-Token: {token} for survey submission (no JWT required)
+
+Endpoints:
+GET/PATCH /org, GET /org/intelligence-profile
+GET/POST /users, DELETE /users/{id}
+POST/GET /meetings, GET/PATCH/DELETE /meetings/{id}
+POST /meetings/{id}/survey/generate (→202+job_id), GET poll, GET /survey (token auth), POST /survey/respond (X-Survey-Token), GET /survey/status
+POST /meetings/{id}/tension-map/generate (→202), GET tension-map (facilitator only), GET facilitator-brief (facilitator only)
+POST /meetings/{id}/session/start, WS /session/stream, POST /session/end, GET /session/summary
+POST/GET /decisions, GET/PATCH /decisions/{id}, POST /decisions/{id}/post-mortem, POST/GET /decisions/{id}/outcomes
+GET /intelligence/patterns, GET /intelligence/domain/{domain}, GET /intelligence/calibration
+POST /webhooks/zoom (HMAC verified), POST /webhooks/stripe (signature verified)
+GET /gdpr/export, DELETE /gdpr/erase (24hr SLA)
+
+WebSocket (WS /meetings/{id}/session/stream):
+Client→Server: acknowledge_alert {alert_id, response[handle_it/aware/dismissed]}, mark_decision {title, description}, request_question {context}
+Server→Client: transcript_chunk {speaker_hash, text, start_seconds}, intelligence_alert {alert_id, type, urgency, message, suggested_question}, speaking_update {distribution}, decision_suggested {title, confidence}
+
+Rate limits: Starter 100/min, Growth 500/min, Enterprise 2000/min, Survey submit 10/min/IP, AI generation 10/min/org
+
+=== SECTION 9: REAL-TIME PIPELINE ===
+
+Audio → Deepgram Nova-2 WebSocket (~300ms) → anonymize_speaker() → InfluxDB speaking_time + Redis rolling_buffer (200 chunks, TTL 4hr) + PostgreSQL chunks + WebSocket broadcast
+Every 30s: Tier1 HiPPO → Tier2 Groupthink precheck → Tier3 Missing Perspective (Pinecone) → LLM evaluation → alert or monitor
+
+=== SECTION 10: LLM COST MODEL ===
+
+Survey Designer: ~$0.004/call. Tension Analyst: ~$0.009/call. Live Agent per eval: ~$0.005. Post-mortem: ~$0.012. Pattern Detector: ~$0.030.
+Org with 5 meetings/month on $490 MRR: total LLM cost ~$3.25/month = 0.66% of revenue. Gross margin 98.6%.
+
+=== SECTION 11: PROMPT VERSIONING ===
+
+All prompts in DB (prompt_versions table). Consistent hash A/B routing: bucket = int(md5(org_id)) % 100. Same org always same bucket.
+Min scores before promotion: Survey >=0.85, Tension >=0.80, Live FP rate <10%, Post-mortem key_assumptions >=90%, Pattern no n<5.
+
+=== SECTION 12: SECURITY & ENV VARS ===
+
+Multi-tenancy: JWT (Auth0 RS256) → App filter (org_id) → PostgreSQL RLS → Audit log
+Auth flow: Auth0 PKCE → JWT 1hr → refresh 7 days httpOnly cookie → enterprise SAML2
+
+Required env vars:
+APP_ENV, SECRET_KEY, AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET, AUTH0_AUDIENCE
+DATABASE_URL (postgresql+asyncpg://), REDIS_URL, INFLUXDB_URL, INFLUXDB_TOKEN
+ANTHROPIC_API_KEY, OPENAI_API_KEY, PINECONE_API_KEY, DEEPGRAM_API_KEY
+SPEAKER_HASH_SECRET, RESPONDENT_HASH_SECRET (AWS Secrets Manager ONLY, rotate annually)
+ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_WEBHOOK_SECRET, TEAMS_APP_ID, TEAMS_APP_PASSWORD
+SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+SENTRY_DSN, DATADOG_API_KEY, AWS_REGION, S3_BUCKET
+FEATURE_LIVE_MEETING=true, FEATURE_RECORDING=false, CELERY_TASK_ALWAYS_EAGER=false
+
+=== SECTION 13: REDIS KEY SCHEMA ===
+
+quorum:session:{id}:state → JSON (TTL 4hr)
+quorum:session:{id}:speaking → Hash {speaker_hash: seconds} (TTL 4hr)
+quorum:session:{id}:alerts → List (TTL 4hr)
+quorum:session:{id}:buffer → List 200 chunks (TTL 4hr)
+quorum:ws:{session_id}:connections → Set (TTL 4hr)
+quorum:ratelimit:{org_id}:{endpoint} → Counter (TTL 60s)
+quorum:survey:{meeting_id}:lock → Lock (TTL 5s)
+quorum:llm:tension:{meeting_id} → JSON cached (TTL 1hr)
+
+=== SECTION 14: CELERY SCHEDULE ===
+
+send_survey_invitations: on demand, high-priority queue
+generate_tension_map: on demand, high-priority queue
+send_outcome_checkins: daily 09:00 UTC, scheduled queue
+run_pattern_detector: Sunday 03:00 UTC, scheduled queue (LangGraph ~5min)
+cleanup_expired_audio: daily 02:00 UTC, scheduled queue
+process_tension_map_queue: every 2 min, default queue
+
+=== SECTION 15: FILE STRUCTURE ===
+
+app/main.py, app/api/routers/{meetings,surveys,sessions,decisions,outcomes,intelligence,webhooks,gdpr}.py
+app/services/{survey,tension_map,stt,intelligence,decision,outcome,pattern,user}_service.py
+app/workers/tasks/{send_survey_invitations,generate_tension_map,schedule_outcome_checkins,run_pattern_detector,cleanup_expired_data}.py
+app/intelligence/agents/{survey_designer,tension_analyst,live_agent,post_mortem_generator,pattern_detector}.py
+app/intelligence/prompts.py (all prompts centralized + versioning)
+app/core/{config,database,security,exceptions,logging}.py
+tests/unit/test_anonymization.py (adversarial, CRITICAL), test_detection_algorithms.py, test_survey_validation.py
+tests/integration/test_api_{surveys,meetings,decisions}.py, test_websocket_session.py
+tests/ai_evals/eval_{survey_designer,tension_analyst,live_agent}.py
+web/app/(app)/{dashboard,meetings/[id]/{survey,brief,live,decisions},decisions,intelligence}/
+terraform/, .github/workflows/{ci.yml,deploy.yml}
+
+=== SECTION 16: BUILD ORDER ===
+
+Phase 1A (Wks 1-2): PostgreSQL+RLS+Alembic → FastAPI+Auth0 → Org+User CRUD → Next.js auth → CI
+Phase 1B (Wks 3-5) DEPLOY+CHARGE: Meeting CRUD → Survey Designer agent → HMAC submission → Tension Analyst → Facilitator brief → Survey UI (no-auth) → SendGrid emails
+Phase 2A (Wks 6-9): Deepgram Nova-2 → Speaker anonymization → InfluxDB → Redis buffer → WebSocket → Zoom SDK → MeetingStreamProcessor
+Phase 2B (Wks 10-12) FULL CORE: HiPPO → Groupthink → Missing Perspective (Pinecone) → Live LLM Agent → Alert delivery → Teams Bot → Meet Extension
+Phase 3 (Wks 13-15): Decision CRUD → Post-mortem generator → Outcome Celery Beat → Outcome UI → Decision library + Pinecone
+Phase 4 (Wks 16-18) THE MOAT: Pattern Detector LangGraph → GIP computation → Intelligence dashboard → Pre-meeting pattern alerts
+Phase 5 (Wks 19-22): Terraform AWS → GitHub Actions → Datadog+PagerDuty → Sentry → SOC2 → SAML/SSO → Stripe billing → GDPR
+
+=== SECTION 17: NON-NEGOTIABLE CONSTRAINTS ===
+
+1. Never call Claude without Instructor
+2. RLS before any production data enters the system
+3. Anonymization secrets in AWS Secrets Manager ONLY
+4. 80% test coverage enforced in CI (--cov-fail-under=80)
+5. All AI prompts have eval suites with minimum quality scores
+6. No # type: ignore without justification comment
+7. CELERY_TASK_ALWAYS_EAGER=true in tests only
+8. Facilitator brief NEVER visible to participants (separate role-checked endpoint)
+9. GET /meetings/{id}/survey/responses returns 404 — this endpoint MUST NOT EXIST
+10. Circuit breaker on all LLM calls (failure_threshold=3, recovery_timeout=60)
+11. All migrations must be backward-compatible with previous app version
+12. No stack traces in production error responses
+13. Never rotate HMAC secrets while survey_open meetings exist
+14. All dependencies pinned exactly, security patches within 48hr of CVE
+15. Never index respondent_hash column
+
+=== SECTION 18: PRICING & BUSINESS ===
+
+Starter: $49/seat/mo (5-15 seats), Phase 1 features
+Growth: $99/seat/mo (16-100 seats), + live intelligence + outcomes + GIP
+Enterprise: $149/seat/mo custom (100+), + SAML/SSO + dedicated instance + SLA
+Annual: 20% discount
+Unit economics (Growth, 25 seats): MRR $2475, COGS ~$35 (LLM $15 + infra $8 + Deepgram $12), gross margin 98.6%
+Moat: 3mo patterns visible, 12mo outcomes predictable, 24mo GIP irreplaceable
+Target Month 12: 50 orgs, $180K ARR, 3 enterprise pilots, NPS >=55
+
+END OF QUORUM MASTER SYSTEM PROMPT v2.0</div>
+
+<script>
+function goto(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+function updateProgress() {
+  const main = document.getElementById('main');
+  const pct = (main.scrollTop / (main.scrollHeight - main.clientHeight)) * 100;
+  document.getElementById('progress').style.width = Math.min(pct, 100) + '%';
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function copyAll() {
+  const content = document.getElementById('full-prompt-content').innerText;
+  navigator.clipboard.writeText(content).then(() => {
+    const btn = document.querySelector('.btn-copy-all');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy Full Prompt'; }, 2500);
+  });
+}
+
+function filterSections() {
+  const q = document.getElementById('search').value.toLowerCase();
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    const label = item.getAttribute('data-label') || item.innerText;
+    item.style.display = label.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// Highlight active section on scroll
+const main = document.getElementById('main');
+const sections = document.querySelectorAll('.section[id]');
+const sidebarItems = document.querySelectorAll('.sidebar-item');
+
+main.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if (s.offsetTop - 100 <= main.scrollTop) current = s.id;
+  });
+  sidebarItems.forEach(item => {
+    const onclick = item.getAttribute('onclick');
+    if (onclick && onclick.includes(current)) {
+      sidebarItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    }
+  });
+});
+</script>
+</body>
+</html>
